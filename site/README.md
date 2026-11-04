@@ -17,11 +17,9 @@
 - **Library**: played/added games, wishlist for upcoming games, your uploads.
 - **Community**: live chat channels; devs can attach their game to a message.
 - **Store page setup**: every game starts as a draft and only goes live once its store page is complete: title, short and full description, tags, cover, 3+ screenshots, controls, languages, age rating, a playable build (or a release date for upcoming games) and system requirements when there are downloads. Banner and trailer (YouTube/Vimeo) are optional. A live checklist shows what is missing, and the server enforces the same rules.
-- **Uploads**: browser builds (.zip with index.html, or one .html) plus Windows, macOS, Linux, Android and Other downloads. Files go straight into R2, big ones in 50 MB chunks, so multi-GB games are fine.
+- **Uploads**: browser builds (.zip with index.html, or one .html) plus Windows games (.zip, .exe, .msi). For now GlitchBox supports browser and Windows games only. Files go straight into R2, big ones in 50 MB chunks, so multi-GB games are fine.
 - **Login**: email + 6-digit code, no passwords, stays logged in for a year.
-- **Website = info site**: in a normal browser the site shows only a home page, a For developers page and short previews for shared game links, all pointing to the download. The store, library, community and uploads open only inside the GlitchBox app (`FULL_APP()` in `public/app.js`). The API itself is unchanged.
 - **Windows app**: GlitchBox for Windows lives in the `desktop/` folder of this repository (see its README). When the site runs inside it, game pages get Install, Play, Update and Uninstall buttons, and `/download` offers the installer once CI has uploaded it to R2 under `desktop/`.
-- **Installable**: it is a Progressive Web App (manifest, icons, service worker), the first step towards the Windows, Android and iPhone apps.
 
 ## Run it on your computer
 
@@ -54,11 +52,7 @@ To ship updates later, just run `npm run deploy` again.
 | Upload | Formats |
 |---|---|
 | Browser | `.zip` containing `index.html` (HTML5, Phaser, Unity WebGL, Godot Web, GameMaker, PICO-8, Construct...) or one `.html` file |
-| Windows | `.zip`, `.exe`, `.msi`, `.7z` |
-| macOS | `.zip`, `.dmg`, `.pkg` |
-| Linux | `.zip`, `.tar.gz`, `.AppImage`, `.deb`, `.rpm`, `.x86_64` |
-| Android | `.apk` |
-| Other | `.jar`, `.love`, `.rar`, source zips |
+| Windows | `.zip` of the game folder (best: the app unpacks it and finds the .exe), `.exe`, `.msi` |
 
 Unity WebGL builds compressed with Brotli or Gzip are served with the right headers. Godot 4 web exports should turn off "Thread Support".
 
@@ -87,5 +81,4 @@ scripts/seed.mjs      Demo data
 
 ## Roadmap
 
-- Android and iPhone apps (Capacitor) built from the same front end. The iPhone app can show browser games but not Windows/Android downloads (App Store rules).
 - Reviews and ratings, screenshots and trailers, dev logs, following developers, moderation and reporting.

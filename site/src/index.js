@@ -13,8 +13,9 @@ const CHANNELS = [
   { id: 'feedback', name: 'Playtesting', desc: 'Ask people to play and review your build.' },
 ];
 const GENRES = ['Action', 'Adventure', 'Arcade', 'Casual', 'Horror', 'Platformer', 'Puzzle', 'Racing', 'RPG', 'Shooter', 'Simulation', 'Sports', 'Strategy', 'Survival', 'Visual Novel', 'Other'];
-const PLATFORMS = ['windows', 'mac', 'linux', 'android', 'other'];
-const DOWNLOAD_EXT = ['.zip', '.7z', '.rar', '.tar', '.gz', '.tgz', '.xz', '.exe', '.msi', '.dmg', '.pkg', '.appimage', '.deb', '.rpm', '.apk', '.jar', '.love', '.x86_64', '.sh'];
+// For now GlitchBox does browser games and Windows games only.
+const PLATFORMS = ['windows'];
+const DOWNLOAD_EXT = ['.zip', '.exe', '.msi']; // what the Windows app can install
 const IMAGE_EXT = ['.png', '.jpg', '.jpeg', '.webp', '.gif'];
 const CONTROLS = ['keyboard', 'mouse', 'gamepad', 'touch'];
 const RATINGS = { everyone: 'Everyone', teen: 'Teen (13+)', mature: 'Mature (17+)' };
@@ -37,7 +38,7 @@ function storeChecklist(g, files) {
   const req = parseJson(g.sysreq, {});
   const tags = (g.tags || '').split(',').filter(Boolean);
   const hasBuild = !!g.web_entry || files.length > 0;
-  const hasDownloads = files.some((f) => f.platform !== 'android');
+  const hasDownloads = files.length > 0;
   const upcoming = g.status === 'upcoming';
   const items = [
     ['title', 'Title', !!g.title, true],

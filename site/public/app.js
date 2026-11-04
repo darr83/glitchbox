@@ -38,15 +38,11 @@ const I = {
   upload: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 16V5m0 0L7.5 9.5M12 5l4.5 4.5M5 20h14"/></svg>',
   full: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>',
 };
-const PLAT_NAME = { web: 'Browser', windows: 'Windows', mac: 'macOS', linux: 'Linux', android: 'Android', other: 'Other' };
+const PLAT_NAME = { web: 'Browser', windows: 'Windows' };
 const platIcons = (ps) => `<span class="plats">${ps.map((p) => `<span title="${PLAT_NAME[p]}">${I[p] || ''}</span>`).join('')}</span>`;
 function detectOS() {
   const ua = navigator.userAgent;
-  if (/Android/i.test(ua)) return 'android';
-  if (/Win/i.test(navigator.platform || ua)) return 'windows';
-  if (/Mac/i.test(navigator.platform || ua) && !/iPhone|iPad/.test(ua)) return 'mac';
-  if (/Linux|X11/i.test(ua)) return 'linux';
-  return 'other';
+  return /Win/i.test(navigator.platform || ua) || desk.api ? 'windows' : 'other';
 }
 
 // ---------- api ----------
@@ -272,7 +268,7 @@ async function viewStore() {
     <div class="hero intro"><div class="hero-body">
       <div class="hero-kicker">The home of independent games</div>
       <h1>Play free. Share free.</h1>
-      <p>GlitchBox is a free home for indie and AI developers. Play in your browser, or upload your own game for Windows, Mac, Linux and more in minutes.</p>
+      <p>GlitchBox is a free home for indie and AI developers. Play in your browser or install Windows games in one click, or upload your own game in minutes.</p>
       <div class="row"><a class="btn primary big" href="/upload" data-link>${I.upload}Upload your game</a>${top.length ? `<a class="btn big" href="#results" onclick="document.getElementById('results').scrollIntoView({behavior:'smooth'});return false">Browse games</a>` : ''}</div>
     </div><img class="hero-logo" src="/brand/logo-full.webp" alt="GlitchBox"></div>`;
 }
@@ -656,7 +652,7 @@ async function viewEditor(id) {
             <div class="shots" id="shots"></div></div>
           <label class="field" style="margin:0"><span>Trailer <em class="hint">optional YouTube or Vimeo link</em></span><input class="input" name="trailerUrl" value="${esc(g?.trailerUrl)}" placeholder="https://www.youtube.com/watch?v=..."></label>`)}
 
-        ${sec(4, 'Builds', 'Upload a browser build, downloads, or both.', `
+        ${sec(4, 'Builds', 'Upload a browser build, a Windows build, or both.', `
           <h4 class="sub">${I.web.replace('<svg', '<svg style="width:17px;vertical-align:-3px;margin-right:6px"')}Play in browser <span class="hint" style="font-weight:400">(recommended, works on any computer)</span></h4>
           <label class="drop" data-drop><input type="file" name="web" accept=".zip,.html,.htm"><b>Drop your web build .zip</b><span class="hint">A zip with an index.html inside (HTML5, Unity WebGL, Godot Web, GameMaker HTML5, PICO-8, Phaser...) or a single .html file</span><div class="picked"></div></label>
           ${g?.playUrl ? `<div class="hint" style="margin-top:8px">${I.check.replace('<svg', '<svg style="width:14px;vertical-align:-2px"')} Browser build is live. Upload a new zip to replace it, or <label style="color:var(--danger);cursor:pointer"><input type="checkbox" name="removeWeb" style="vertical-align:-2px"> remove it</label>.</div>` : ''}
@@ -664,22 +660,18 @@ async function viewEditor(id) {
             <label class="field"><span>Game width (px)</span><input class="input" name="webWidth" type="number" min="200" max="3840" value="${g?.webWidth || 960}"></label>
             <label class="field"><span>Game height (px)</span><input class="input" name="webHeight" type="number" min="200" max="2160" value="${g?.webHeight || 600}"></label>
           </div>
-          <h4 class="sub">Downloads</h4>
+          <h4 class="sub">Windows build</h4>
           <div class="two">
             <label class="field"><span>Version <em class="hint">for new uploads</em></span><input class="input" name="buildVersion" maxlength="40" placeholder="${esc(nextVersion(g))}"></label>
             <label class="field"><span>Windows launch file <em class="hint">optional</em></span><input class="input" name="launchPath" maxlength="260" value="${esc((g?.files || []).find((f) => f.platform === 'windows')?.launchPath || '')}" placeholder="e.g. MyGame.exe or Bin/MyGame.exe"></label>
           </div>
           <label class="field"><span>What's new <em class="hint">patch notes shown to players when you upload a new version</em></span><textarea class="input" name="buildNotes" rows="3" maxlength="4000" placeholder="- Fixed a crash on level 3&#10;- Added controller support"></textarea></label>
-          <div class="hint" style="margin:-6px 0 16px">A new upload replaces the old build for that platform, and players with GlitchBox for Windows get it automatically.</div>
-          ${platRow('windows', '.zip, .exe, .msi')}
-          ${platRow('mac', '.zip, .dmg, .pkg')}
-          ${platRow('linux', '.zip, .tar.gz, .AppImage, .deb')}
-          ${platRow('android', '.apk')}
-          ${platRow('other', '.jar, .love, source zip...')}`)}
+          <div class="hint" style="margin:-6px 0 16px">A new upload replaces the old Windows build, and players who installed it get the update automatically.</div>
+          ${platRow('windows', '.zip (best), .exe, .msi')}`)}
 
         ${sec(5, 'System requirements', 'Needed if you offer downloads, so players know it will run.', `
           <div class="two">
-            <label class="field"><span>Operating system</span><input class="input" name="req_os" maxlength="120" value="${esc(req.os)}" placeholder="Windows 10 64-bit / macOS 12 / Ubuntu 22.04"></label>
+            <label class="field"><span>Operating system</span><input class="input" name="req_os" maxlength="120" value="${esc(req.os)}" placeholder="Windows 10 64-bit"></label>
             <label class="field"><span>Memory (RAM)</span><input class="input" name="req_ram" maxlength="120" value="${esc(req.ram)}" placeholder="4 GB"></label>
             <label class="field"><span>Processor</span><input class="input" name="req_cpu" maxlength="120" value="${esc(req.cpu)}" placeholder="Intel i3 / Ryzen 3 or better"></label>
             <label class="field"><span>Graphics</span><input class="input" name="req_gpu" maxlength="120" value="${esc(req.gpu)}" placeholder="Intel UHD 620 / GTX 750"></label>
@@ -736,7 +728,7 @@ async function viewEditor(id) {
     const { web, downloads } = pickedFiles();
     const existingFiles = (g?.files || []).filter((f) => $(`[data-rmfile="${f.id}"]`));
     const hasWeb = (!!g?.playUrl && !form.removeWeb?.checked) || !!web;
-    const hasDownloads = existingFiles.some((f) => f.platform !== 'android') || downloads.some((d) => d.platform !== 'android');
+    const hasDownloads = existingFiles.length > 0 || downloads.length > 0;
     const upcoming = v('status') === 'upcoming';
     const items = [
       ['Title', !!v('title'), true],
@@ -1125,7 +1117,7 @@ function deskSettingsBind() {
 // ---------- Website (info only) ----------
 // The full store, library, community and uploads live in the GlitchBox apps. In a normal
 // browser the site is an info site that points people to the download.
-const FULL_APP = () => !!desk.api; // later: || window.Capacitor (Android and iPhone apps)
+const FULL_APP = () => !!desk.api;
 let deskDownload = null;
 const getDownload = async () => deskDownload ||= await api('/api/desktop').catch(() => ({ available: false }));
 const dlButton = (d, cls = 'primary big') => d.available
@@ -1165,7 +1157,7 @@ async function viewLanding(focus) {
         <h1>The home of <span class="grad">independent games</span>.</h1>
         <p>GlitchBox is a free game launcher for indie and AI-made games. Find new games, install them in one click and keep them up to date automatically.</p>
         <div class="row" id="download">${dlButton(d)}</div>
-        <div class="hint" style="margin-top:12px">Windows 10 and 11, 64-bit. Android and iPhone apps are coming later.</div>
+        <div class="hint" style="margin-top:12px">Windows 10 and 11, 64-bit.</div>
       </div>
       <img class="land-logo" src="/brand/logo-full.webp" alt="GlitchBox">
     </section>
@@ -1183,7 +1175,7 @@ async function viewLanding(focus) {
       ['Is it really free?', 'Yes. GlitchBox is free for players and free for developers to publish on.'],
       ['Why do I need the app?', 'The app installs, updates and launches your games, tracks playtime and keeps your library in one place. The website is just here to tell you about it.'],
       ['Do I need a password?', 'No. You sign in with your email and a 6-digit code, and the app keeps you signed in.'],
-      ['What about Mac, Linux and phones?', 'Windows comes first. Android and iPhone apps are planned.'],
+      ['Can I play on Mac, Linux or my phone?', 'Not yet. For now GlitchBox is a Windows app with browser games and Windows games.'],
       ['Windows says it protected my PC?', 'Early versions of new apps can show this message. Click "More info" and then "Run anyway".'],
     ].map(([q, a]) => `<details class="panel"><summary>${q}</summary><p class="hint">${a}</p></details>`).join('')}</div>
     <section class="land-hero small"><div class="land-copy"><h2>Ready to play?</h2><div class="row">${dlButton(d)}</div></div></section>`;
@@ -1197,7 +1189,7 @@ async function viewDevInfo() {
   const steps = [
     ['Get the app and sign in', 'Download GlitchBox for Windows and sign in with your email. No passwords.'],
     ['Create your store page', 'Add a title, description, cover, screenshots, tags, controls and age rating. A checklist shows what is missing before you can publish.'],
-    ['Upload your build', 'Upload a browser game (.zip with index.html) or downloads for Windows, Mac, Linux and Android. Big files are fine.'],
+    ['Upload your build', 'Upload a browser game (.zip with index.html) or a Windows game (.zip, .exe or .msi). Big files are fine.'],
     ['Publish and update', 'Players install with one click. Upload a new version with patch notes and every player gets it automatically.'],
   ];
   app.innerHTML = `
@@ -1212,7 +1204,7 @@ async function viewDevInfo() {
     <h2 class="land-h">How it works</h2>
     <div class="land-grid steps">${steps.map(([t, x], i) => `<div class="panel"><div class="step-n">${i + 1}</div><h3>${t}</h3><div class="hint">${x}</div></div>`).join('')}</div>
     <h2 class="land-h">What you can upload</h2>
-    <div class="panel"><div class="formats">${[['Browser game', '.zip with index.html, or a single .html'], ['Windows', '.zip, .exe, .msi, .7z'], ['macOS', '.zip, .dmg'], ['Linux', '.zip, .tar.gz, .AppImage'], ['Android', '.apk']]
+    <div class="panel"><div class="formats">${[['Browser game', '.zip with index.html, or a single .html'], ['Windows game', '.zip of your game folder (best), or an .exe or .msi installer']]
       .map(([p, f]) => `<div><b>${p}</b><span class="hint">${f}</span></div>`).join('')}</div>
       <p class="hint" style="margin:14px 0 0">Windows games installed through the app update themselves when you upload a new version.</p></div>`;
 }
