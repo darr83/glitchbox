@@ -15,6 +15,7 @@
 - **Store**: search and filter (play in browser, AI-made, coming soon, genre, sort) with a featured banner.
 - **Game pages**: Play in browser, plus a download button that matches the visitor's computer.
 - **Library**: played/added games, wishlist for upcoming games, your uploads.
+- **Alpha/Beta testing**: developers can set a game to Alpha test or Beta test. Those games show in the Testing tab (not the main store), and their store page has a public tester chat that everyone can read. The chat closes when the game is set to Released.
 - **Community**: live chat channels; devs can attach their game to a message.
 - **Store page setup**: every game starts as a draft and only goes live once its store page is complete: title, short and full description, tags, cover, 3+ screenshots, controls, languages, age rating, a playable build (or a release date for upcoming games) and system requirements when there are downloads. Banner and trailer (YouTube/Vimeo) are optional. A live checklist shows what is missing, and the server enforces the same rules.
 - **Uploads**: browser builds (.zip with index.html, or one .html) plus Windows games (.zip, .exe, .msi). For now GlitchBox supports browser and Windows games only. Files go straight into R2, big ones in 50 MB chunks, so multi-GB games are fine.

@@ -12,6 +12,11 @@ const CHANNELS = [
   { id: 'ai-devs', name: 'AI Devs', desc: 'AI-made games, tools and experiments.' },
   { id: 'feedback', name: 'Playtesting', desc: 'Ask people to play and review your build.' },
 ];
+// Game status: released, upcoming (coming soon), or an Alpha/Beta test. Testing games live in the
+// Testing tab, not the main store, and only they have a public tester chat on their store page.
+const STATUSES = ['released', 'upcoming', 'alpha', 'beta'];
+const TESTING = ['alpha', 'beta'];
+const isTesting = (g) => TESTING.includes(g.status);
 const GENRES = ['Action', 'Adventure', 'Arcade', 'Casual', 'Horror', 'Platformer', 'Puzzle', 'Racing', 'RPG', 'Shooter', 'Simulation', 'Sports', 'Strategy', 'Survival', 'Visual Novel', 'Other'];
 // For now GlitchBox does browser games and Windows games only.
 const PLATFORMS = ['windows'];
@@ -325,7 +330,10 @@ route('GET', '/api/games', async (c) => {
   if (text) { where.push('(g.title LIKE ? OR g.tagline LIKE ? OR g.tags LIKE ? OR u.username LIKE ?)'); args.push(...Array(4).fill(`%${text}%`)); }
   if (GENRES.includes(q.get('genre'))) { where.push('g.genre = ?'); args.push(q.get('genre')); }
   if (q.get('ai') === '1') where.push('g.is_ai = 1');
-  if (['upcoming', 'released'].includes(q.get('status'))) { where.push('g.status = ?'); args.push(q.get('status')); }
+  const st = q.get('status');
+  if (st === 'testing') where.push("g.status IN ('alpha', 'beta')");
+  else if (STATUSES.includes(st)) { where.push('g.status = ?'); args.push(st); }
+  else where.push("g.status NOT IN ('alpha', 'beta')"); // the main store leaves out test builds
   if (q.get('web') === '1') where.push('g.web_entry IS NOT NULL');
   where.push('g.published = 1');
   const order = { new: 'g.created_at DESC', popular: '(g.downloads + g.plays) DESC, g.created_at DESC', updated: 'g.updated_at DESC', az: 'g.title COLLATE NOCASE' }[q.get('sort')] || 'g.created_at DESC';
@@ -359,7 +367,7 @@ function readGameFields(b, existing = {}) {
     title: pick('title', 80, ''), tagline: pick('tagline', 140, ''), description: pick('description', 8000, ''),
     genre: GENRES.includes(b.genre) ? b.genre : (existing.genre || 'Other'), tags,
     is_ai: b.isAi !== undefined ? (b.isAi ? 1 : 0) : (existing.is_ai || 0),
-    status: ['released', 'upcoming'].includes(b.status) ? b.status : (existing.status || 'released'),
+    status: STATUSES.includes(b.status) ? b.status : (existing.status || 'released'),
     web_width: w >= 200 && w <= 3840 ? Math.round(w) : (existing.web_width || 960),
     web_height: h >= 200 && h <= 2160 ? Math.round(h) : (existing.web_height || 600),
     trailer_url: pick('trailerUrl', 300, '', 'trailer_url'),
@@ -417,7 +425,7 @@ route('PUT', '/api/games/:id', async (c) => {
   checkTrailer(f);
   let updated = await c.env.DB.prepare(`UPDATE games SET ${GAME_COLS.map((k) => k + '=?').join(', ')}, updated_at=? WHERE id=? RETURNING *`)
     .bind(...GAME_COLS.map((k) => f[k]), now(), g.id).first();
-  if (g.status === 'upcoming' && f.status === 'released' && g.published) {
+  if (g.status !== 'released' && f.status === 'released' && g.published) {
     updated = await c.env.DB.prepare('UPDATE games SET released_at = ? WHERE id = ? RETURNING *').bind(now(), g.id).first();
   }
   if (b.removeWeb && g.web_prefix) {
@@ -766,10 +774,40 @@ route('POST', '/api/channels/:ch/posts', async (c) => {
 route('DELETE', '/api/posts/:id', async (c) => {
   requireProfile(c);
   const p = await c.env.DB.prepare('SELECT * FROM posts WHERE id = ?').bind(Number(c.params.id)).first();
-  if (!p || p.user_id !== c.user.id) fail(404, 'Post not found');
+  if (!p) fail(404, 'Post not found');
+  const gameDev = p.channel.startsWith('game:') && (await c.env.DB.prepare('SELECT developer_id FROM games WHERE id = ?').bind(Number(p.channel.slice(5))).first('developer_id')) === c.user.id;
+  if (p.user_id !== c.user.id && !gameDev) fail(404, 'Post not found');
   await c.env.DB.prepare('DELETE FROM posts WHERE id = ?').bind(p.id).run();
   c.ctx.waitUntil(hub(c.env).broadcast({ type: 'delete', id: p.id, channel: p.channel }));
   return json({ ok: true });
+});
+
+// Tester chat on Alpha/Beta store pages. Anyone can read it, signed-in players can post.
+// It closes when the game moves to full release (the messages are kept but no longer shown).
+async function testingGame(c, id) {
+  const g = await c.env.DB.prepare('SELECT * FROM games WHERE id = ?').bind(Number(id)).first();
+  if (!g || (!g.published && g.developer_id !== c.user?.id)) fail(404, 'Game not found');
+  if (!isTesting(g)) fail(410, 'The tester chat closed when this game was released');
+  return g;
+}
+route('GET', '/api/games/:id/chat', async (c) => {
+  const g = await testingGame(c, c.params.id);
+  const before = Number(c.url.searchParams.get('before')) || Number.MAX_SAFE_INTEGER;
+  const { results } = await c.env.DB.prepare('SELECT * FROM posts WHERE channel = ? AND id < ? ORDER BY id DESC LIMIT 80').bind('game:' + g.id, before).all();
+  return json({ posts: await postsOut(c, results.reverse()) });
+});
+route('POST', '/api/games/:id/chat', async (c) => {
+  requireProfile(c);
+  const g = await testingGame(c, c.params.id);
+  const text = tidy((await body(c.req)).body, 2000);
+  if (!text) fail(400, 'Write something first');
+  const recent = await c.env.DB.prepare('SELECT COUNT(*) n FROM posts WHERE user_id = ? AND created_at > ?').bind(c.user.id, now() - 30000).first('n');
+  if (recent >= 8) fail(429, 'Slow down a little');
+  const row = await c.env.DB.prepare('INSERT INTO posts (channel, user_id, body, created_at) VALUES (?, ?, ?, ?) RETURNING *')
+    .bind('game:' + g.id, c.user.id, text, now()).first();
+  const [post] = await postsOut(c, [row]);
+  c.ctx.waitUntil(hub(c.env).broadcast({ type: 'post', post }));
+  return json({ post });
 });
 
 // Live updates over a WebSocket held by the ChatHub Durable Object.

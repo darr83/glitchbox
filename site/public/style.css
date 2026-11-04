@@ -446,3 +446,15 @@ body.desktop .footer { display: none; }
   .preview-shots img:nth-child(3) { display: none; }
   body.website .nav-links { display: none; }
 }
+
+/* ---------- Alpha/Beta testing ---------- */
+.badge.test { background: rgba(124, 108, 255, .9); color: #fff; }
+.tag.test { color: #b9b0ff; border-color: rgba(124, 108, 255, .5); }
+.test-hero { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 18px; padding: 28px;
+  background: linear-gradient(120deg, rgba(124, 108, 255, .18), rgba(34, 230, 255, .08)), var(--panel); }
+.test-hero h1 { margin: 6px 0 6px; font-size: 30px; }
+.test-hero p { margin: 0; max-width: 560px; font-size: 14.5px; }
+.test-note { padding: 14px 18px; margin-bottom: 16px; border-radius: 12px; border: 1px solid rgba(124, 108, 255, .45); background: rgba(124, 108, 255, .1); font-size: 14px; color: #d6d1ff; }
+.tester-chat { height: 520px; }
+@media (max-width: 680px) { .test-hero { flex-direction: column; align-items: flex-start; } }
+.dev-badge { margin-left: 8px; padding: 1px 7px; border-radius: 6px; background: var(--grad); color: #071013; font-size: 11px; font-weight: 800; vertical-align: 1px; }

@@ -38,6 +38,7 @@ const I = {
   upload: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 16V5m0 0L7.5 9.5M12 5l4.5 4.5M5 20h14"/></svg>',
   full: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>',
 };
+const TEST_LABEL = { alpha: 'Alpha test', beta: 'Beta test' };
 const PLAT_NAME = { web: 'Browser', windows: 'Windows' };
 const platIcons = (ps) => `<span class="plats">${ps.map((p) => `<span title="${PLAT_NAME[p]}">${I[p] || ''}</span>`).join('')}</span>`;
 function detectOS() {
@@ -169,6 +170,7 @@ async function needLogin(reason) {
 const routes = [
   [/^\/$/, viewStore, 'store'],
   [/^\/game\/([^/]+)$/, viewGame, 'store'],
+  [/^\/testing$/, viewTesting, 'testing'],
   [/^\/library$/, viewLibrary, 'library'],
   [/^\/community(?:\/([^/]+))?$/, viewCommunity, 'community'],
   [/^\/upload$/, () => viewEditor(null), ''],
@@ -203,7 +205,7 @@ window.addEventListener('popstate', route);
 const gameCard = (g) => `
   <a class="card" href="/game/${esc(g.slug)}" data-link>
     <div class="cover">${coverHtml(g)}
-      <div class="badges">${g.status === 'upcoming' ? '<span class="badge soon">COMING SOON</span>' : ''}${g.isAi ? '<span class="badge ai">AI-MADE</span>' : ''}${g.playUrl ? '<span class="badge web">PLAY NOW</span>' : ''}</div>
+      <div class="badges">${g.status === 'upcoming' ? '<span class="badge soon">COMING SOON</span>' : ''}${TEST_LABEL[g.status] ? `<span class="badge test">${TEST_LABEL[g.status].toUpperCase()}</span>` : ''}${g.isAi ? '<span class="badge ai">AI-MADE</span>' : ''}${g.playUrl ? '<span class="badge web">PLAY NOW</span>' : ''}</div>
     </div>
     <div class="card-body">
       <div class="card-title">${esc(g.title)}</div>
@@ -273,6 +275,28 @@ async function viewStore() {
     </div><img class="hero-logo" src="/brand/logo-full.webp" alt="GlitchBox"></div>`;
 }
 
+// ---------- Alpha/Beta testing ----------
+let testFilter = '';
+async function viewTesting() {
+  document.title = 'Testing · GlitchBox';
+  app.innerHTML = `
+    <div class="test-hero panel">
+      <div><div class="hero-kicker">Alpha and Beta testing</div><h1>Play it before anyone else.</h1>
+        <p class="hint">These games are still being made. Try them early, report bugs and talk to the developers in each game's tester chat.</p></div>
+      <a class="btn primary" href="/upload" data-link>${I.upload}Submit a game for testing</a>
+    </div>
+    <div class="filters"><button class="chip" data-t="">All</button><button class="chip" data-t="alpha">Alpha</button><button class="chip" data-t="beta">Beta</button></div>
+    <div id="results" class="grid"><div class="loading">Loading...</div></div>`;
+  const load = async () => {
+    $$('.chip[data-t]').forEach((c) => c.classList.toggle('on', c.dataset.t === testFilter));
+    const { games } = await api('/api/games?sort=updated&status=' + (testFilter || 'testing'));
+    $('#results').innerHTML = games.length ? games.map(gameCard).join('')
+      : '<div class="empty" style="grid-column:1/-1"><h3>Nothing in testing right now</h3>Developers can set a game to Alpha test or Beta test in its store page setup.</div>';
+  };
+  $$('.chip[data-t]').forEach((c) => c.onclick = () => { testFilter = c.dataset.t; load(); });
+  load();
+}
+
 // ---------- game page ----------
 async function viewGame(slug) {
   app.innerHTML = '<div class="loading">Loading...</div>';
@@ -282,6 +306,7 @@ async function viewGame(slug) {
   const mine = state.me && state.me.id === g.developerId;
   const best = g.files.find((f) => f.platform === os);
   const soon = g.status === 'upcoming';
+  const testing = TEST_LABEL[g.status];
   // Gallery: trailer first (if any), then screenshots.
   const slides = [...(g.trailerEmbed ? [{ type: 'video', src: g.trailerEmbed }] : []), ...g.screenshots.map((s) => ({ type: 'img', src: s.url }))];
   if (!slides.length && g.cover) slides.push({ type: 'img', src: g.cover });
@@ -313,7 +338,7 @@ async function viewGame(slug) {
           <h1>${esc(g.title)}</h1>
           <div class="by">by <a href="/dev/${esc(g.developer)}" data-link>${esc(g.developer)}</a> · ${esc(g.genre)}${g.releaseDate ? ` · ${soon ? 'Coming ' : ''}${esc(g.releaseDate)}` : ''}</div>
           ${g.tagline ? `<div class="tagline">${esc(g.tagline)}</div>` : ''}
-          <div class="tags">${soon ? '<span class="tag" style="color:var(--warn)">Coming soon</span>' : ''}${g.isAi ? '<span class="tag" style="color:#d9a7ff">AI-made</span>' : ''}${g.tags.map((t) => `<span class="tag">${esc(t)}</span>`).join('')}</div>
+          <div class="tags">${soon ? '<span class="tag" style="color:var(--warn)">Coming soon</span>' : ''}${testing ? `<span class="tag test">${testing}</span>` : ''}${g.isAi ? '<span class="tag" style="color:#d9a7ff">AI-made</span>' : ''}${g.tags.map((t) => `<span class="tag">${esc(t)}</span>`).join('')}</div>
           <div class="actions">
             ${g.playUrl ? `<button class="btn ${desk.api && winFile(g) ? '' : 'primary'} big" id="play">${I.play}Play in browser</button>` : ''}
             ${deskSlot(g, 'big')}
@@ -330,7 +355,14 @@ async function viewGame(slug) {
     </div>
     <div class="game-cols">
       <div>
+        ${testing ? `<div class="test-note"><b>This game is in ${testing.toLowerCase()}.</b> Expect bugs and unfinished parts. Play it, then tell ${esc(g.developer)} what you think in the tester chat below.</div>` : ''}
         <div class="panel"><h3>About this game</h3><div class="desc">${g.description ? linkify(g.description) : '<span class="hint">The developer has not written a description yet.</span>'}</div></div>
+        ${testing ? `<div class="chat tester-chat" style="margin-top:16px">
+          <div class="chat-head"><b>Tester chat</b><div>Open to everyone. Players and ${esc(g.developer)} talk about the ${testing.toLowerCase()} here. This chat closes when the game is fully released.</div></div>
+          <div class="feed" id="feed"><div class="loading">Loading...</div></div>
+          ${state.me?.username ? `<form class="composer" id="composer"><textarea class="input" name="body" placeholder="Report a bug, share feedback or ask a question" maxlength="2000"></textarea><button class="btn primary">Send</button></form>`
+            : '<div class="composer" style="justify-content:center"><button class="btn primary" id="chat-login">Log in to join the chat</button></div>'}
+        </div>` : ''}
         ${g.updates?.length ? `<div class="panel" style="margin-top:16px"><h3>Updates and patch notes</h3>
           <div class="updates">${g.updates.map((u) => `<div class="upd"><div class="row"><b>Version ${esc(u.version)}</b><span class="hint">${new Date(u.createdAt).toLocaleDateString()}</span></div>${u.notes ? `<div class="desc">${linkify(u.notes)}</div>` : ''}</div>`).join('')}</div></div>` : ''}
         ${reqRows.length ? `<div class="panel" style="margin-top:16px"><h3>System requirements <span class="hint" style="font-weight:400">(minimum)</span></h3>
@@ -349,11 +381,11 @@ async function viewGame(slug) {
           <dl class="spec">${details.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>
           ${links ? `<div class="row" style="margin-top:14px">${links}</div>` : ''}
         </div>
-        <div class="panel" style="margin-top:16px">
+        ${testing ? '' : `<div class="panel" style="margin-top:16px">
           <h3>Talk about it</h3>
           <p class="hint" style="margin:0 0 12px">Share feedback or ideas with ${esc(g.developer)} and other players.</p>
           <a class="btn small" href="/community/feedback" data-link>Open Playtesting chat</a>
-        </div>
+        </div>`}
       </div>
     </div>`;
   // gallery
@@ -367,6 +399,10 @@ async function viewGame(slug) {
   };
   show(0);
   deskRefresh();
+  if (testing) {
+    $$('[data-nav]').forEach((a) => a.classList.toggle('active', a.dataset.nav === 'testing'));
+    mountChat(`/api/games/${g.id}/chat`, 'game:' + g.id, mine, 'No messages yet. Be the first to share feedback.', g.developerId);
+  }
   $('#thumbs')?.addEventListener('click', (e) => { const t = e.target.closest('.thumb'); if (t) show(Number(t.dataset.i)); });
   $('#stage').addEventListener('click', (e) => {
     const step = e.target.closest('[data-step]');
@@ -518,11 +554,11 @@ function ensureStream() {
 let lastPost = null;
 function postHtml(p, prev) {
   const cont = prev && prev.authorId === p.authorId && p.createdAt - prev.createdAt < 5 * 60 * 1000 && !p.game;
-  const mine = state.me && state.me.id === p.authorId;
+  const mine = state.me && (state.me.id === p.authorId || state.chatMod);
   return `<div class="msg ${cont ? 'cont' : ''}" data-id="${p.id}">
     ${avatar(p.author)}
     <div class="msg-body">
-      ${cont ? '' : `<div><span class="who"><a href="/dev/${esc(p.author)}" data-link>${esc(p.author)}</a></span><span class="when">${ago(p.createdAt)}</span></div>`}
+      ${cont ? '' : `<div><span class="who"><a href="/dev/${esc(p.author)}" data-link>${esc(p.author)}</a></span>${state.chatDev && state.chatDev === p.authorId ? '<span class="dev-badge">Developer</span>' : ''}<span class="when">${ago(p.createdAt)}</span></div>`}
       <div class="text">${linkify(p.body)}${mine ? `<button class="del" data-del="${p.id}">delete</button>` : ''}</div>
       ${p.game ? `<a class="game-embed" href="/game/${esc(p.game.slug)}" data-link><div class="cover">${coverHtml(p.game)}</div><div><b>${esc(p.game.title)}</b><span>${esc(p.game.tagline || 'View game page')}</span></div></a>` : ''}
     </div></div>`;
@@ -535,11 +571,39 @@ function appendPost(p) {
   lastPost = p;
   if (atBottom || p.authorId === state.me?.id) feed.scrollTop = feed.scrollHeight;
 }
+// Loads a feed into #feed and wires up #composer. Used by community channels and tester chats.
+async function mountChat(url, channel, canModerate, emptyText, devId = null) {
+  state.channel = channel; state.chatMod = canModerate; state.chatDev = devId;
+  ensureStream();
+  const { posts } = await api(url);
+  const feed = $('#feed'); if (!feed) return;
+  lastPost = null;
+  feed.innerHTML = posts.length ? '' : `<div class="empty" style="margin:auto;border:0;background:none">${emptyText}</div>`;
+  posts.forEach(appendPost);
+  feed.scrollTop = feed.scrollHeight;
+  feed.onclick = async (e) => {
+    const id = e.target.dataset?.del;
+    if (id && confirm('Delete this message?')) await api('/api/posts/' + id, { method: 'DELETE' }).catch((err) => toast(err.message, 'error'));
+  };
+  $('#chat-login')?.addEventListener('click', () => loginModal());
+  const form = $('#composer');
+  if (!form) return;
+  const ta = form.body;
+  ta.oninput = () => { ta.style.height = '46px'; ta.style.height = Math.min(ta.scrollHeight, 160) + 'px'; };
+  ta.onkeydown = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); form.requestSubmit(); } };
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    const body = ta.value.trim(); if (!body) return;
+    try {
+      const { post } = await api(url, { method: 'POST', body: { body, gameId: form.gameId?.value || null } });
+      ta.value = ''; ta.style.height = '46px'; if (form.gameId) form.gameId.value = '';
+      appendPost(post);
+    } catch (err) { toast(err.message, 'error'); }
+  };
+}
 async function viewCommunity(ch) {
   const channels = state.meta.channels;
   const c = channels.find((x) => x.id === ch) || channels[0];
-  state.channel = c.id;
-  ensureStream();
   let myGames = [];
   if (state.me?.username) myGames = (await api('/api/library')).uploads;
   app.innerHTML = `
@@ -556,33 +620,8 @@ async function viewCommunity(ch) {
         </form>` : `<div class="composer" style="justify-content:center"><button class="btn primary" id="chat-login">Log in to join the conversation</button></div>`}
       </div>
     </div>`;
-  const { posts } = await api(`/api/channels/${c.id}/posts`);
-  const feed = $('#feed');
-  lastPost = null;
-  feed.innerHTML = posts.length ? '' : `<div class="empty" style="margin:auto;border:0;background:none"><h3>No messages yet</h3>Start the conversation in #${esc(c.name)}.</div>`;
-  posts.forEach(appendPost);
-  feed.scrollTop = feed.scrollHeight;
-  feed.onclick = async (e) => {
-    const id = e.target.dataset?.del;
-    if (id && confirm('Delete this message?')) await api('/api/posts/' + id, { method: 'DELETE' }).catch((err) => toast(err.message, 'error'));
-  };
-  $('#chat-login')?.addEventListener('click', () => loginModal());
-  const form = $('#composer');
-  if (form) {
-    const ta = form.body;
-    ta.oninput = () => { ta.style.height = '46px'; ta.style.height = Math.min(ta.scrollHeight, 160) + 'px'; };
-    ta.onkeydown = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); form.requestSubmit(); } };
-    form.onsubmit = async (e) => {
-      e.preventDefault();
-      const body = ta.value.trim(); if (!body) return;
-      try {
-        const { post } = await api(`/api/channels/${c.id}/posts`, { method: 'POST', body: { body, gameId: form.gameId?.value || null } });
-        ta.value = ''; ta.style.height = '46px'; if (form.gameId) form.gameId.value = '';
-        appendPost(post);
-      } catch (err) { toast(err.message, 'error'); }
-    };
-    ta.focus();
-  }
+  await mountChat(`/api/channels/${c.id}/posts`, c.id, false, `<h3>No messages yet</h3>Start the conversation in #${esc(c.name)}.`);
+  $('#composer textarea')?.focus();
 }
 
 // ---------- store page setup (upload / edit) ----------
@@ -628,7 +667,7 @@ async function viewEditor(id) {
           <label class="field"><span>Short description <em class="count" data-count="tagline">0/140</em></span><input class="input" name="tagline" maxlength="140" value="${esc(g?.tagline)}" placeholder="One sentence that sells it. Shown on store cards."></label>
           <div class="two">
             <label class="field"><span>Genre</span><select class="input" name="genre">${genres.map((x) => `<option ${(g?.genre || 'Other') === x ? 'selected' : ''}>${x}</option>`).join('')}</select></label>
-            <label class="field"><span>Status</span><select class="input" name="status"><option value="released">Released</option><option value="upcoming" ${g?.status === 'upcoming' ? 'selected' : ''}>Coming soon</option></select></label>
+            <label class="field"><span>Status</span><select class="input" name="status">${[['released', 'Released'], ['upcoming', 'Coming soon'], ['alpha', 'Alpha test'], ['beta', 'Beta test']].map(([v, l]) => `<option value="${v}" ${(g?.status || 'released') === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
           </div>
           <div class="two">
             <label class="field"><span>Release date</span><input class="input" name="releaseDate" maxlength="40" value="${esc(g?.releaseDate)}" placeholder="e.g. 12 March 2027 or Spring 2027"></label>
@@ -1146,7 +1185,7 @@ async function viewLanding(focus) {
     ['One-click installs', 'Every game installs with a single click. Downloads pause, resume and unpack themselves.'],
     ['Automatic updates', 'Games update in the background, and you can read the patch notes for every version.'],
     ['Your library', 'Everything you own in one place, with playtime for every game.'],
-    ['Community', 'Chat with players and developers, share ideas and follow upcoming games.'],
+    ['Alpha and Beta testing', 'Play games before they are finished and chat with the developers about them.'],
     ['Wishlist alerts', 'Get a notification the moment a game you are waiting for comes out.'],
     ['Works offline', 'Installed games keep working with no internet connection.'],
   ];
@@ -1220,7 +1259,7 @@ async function viewGamePreview(slug) {
     <section class="preview panel">
       <div class="preview-cover">${g.banner ? `<img src="${esc(g.banner)}" alt="">` : coverHtml(g)}</div>
       <div class="preview-body">
-        <div class="hero-kicker">${g.status === 'upcoming' ? 'Coming soon on GlitchBox' : 'Available on GlitchBox'}</div>
+        <div class="hero-kicker">${g.status === 'upcoming' ? 'Coming soon on GlitchBox' : TEST_LABEL[g.status] ? TEST_LABEL[g.status] + ' on GlitchBox' : 'Available on GlitchBox'}</div>
         <h1>${esc(g.title)}</h1>
         <div class="hint">by ${esc(g.developer)} · ${esc(g.genre)}</div>
         ${g.tagline ? `<p>${esc(g.tagline)}</p>` : ''}
