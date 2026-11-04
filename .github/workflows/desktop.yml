@@ -60,9 +60,9 @@ jobs:
         run: |
           cd dist
           for f in *.exe *.blockmap; do
-            npx --yes wrangler@3 r2 object put "$BUCKET/desktop/$f" --file "$f" --remote
+            npx --yes wrangler@4 r2 object put "$BUCKET/desktop/$f" --file "$f" --remote
           done
           # A stable link for the website's download button.
-          npx --yes wrangler@3 r2 object put "$BUCKET/desktop/GlitchBox-Setup.exe" --file GlitchBox-Setup-*.exe --remote
+          npx --yes wrangler@4 r2 object put "$BUCKET/desktop/GlitchBox-Setup.exe" --file GlitchBox-Setup-*.exe --remote
           # latest.yml goes last: installed apps start updating as soon as it changes.
-          npx --yes wrangler@3 r2 object put "$BUCKET/desktop/latest.yml" --file latest.yml --remote --content-type text/yaml
+          npx --yes wrangler@4 r2 object put "$BUCKET/desktop/latest.yml" --file latest.yml --remote --content-type text/yaml
