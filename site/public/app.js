@@ -69,10 +69,10 @@ function toast(msg, kind = '') {
 function renderNav() {
   const me = state.me;
   $('#nav-right').innerHTML = me
-    ? `${desk.api ? '<a class="desk-badge" id="desk-dl" href="/library" data-link hidden></a>' : '<a class="btn ghost small get-app" href="/download" data-link>Get the app</a>'}
+    ? `<a class="desk-badge" id="desk-dl" href="/library" data-link hidden></a>
        <a class="btn primary small upload-btn" href="/upload" data-link>${I.upload}<span>Upload game</span></a>
        <a class="user-chip" href="/settings" data-link>${avatar(me.username || me.email)}<span>${esc(me.username || 'Set up profile')}</span></a>`
-    : `${desk.api ? '' : '<a class="btn ghost small get-app" href="/download" data-link>Get the app</a>'}<button class="btn primary small" id="login-btn">Log in</button>`;
+    : `<button class="btn primary small" id="login-btn">Log in</button>`;
   $('#login-btn')?.addEventListener('click', () => loginModal());
   deskRefresh();
 }
@@ -179,12 +179,11 @@ const routes = [
   [/^\/edit\/(\d+)$/, viewEditor, ''],
   [/^\/dev\/([^/]+)$/, viewDev, ''],
   [/^\/settings$/, viewSettings, ''],
-  [/^\/download$/, viewDownload, ''],
 ];
 function go(path) { history.pushState({}, '', path); route(); }
 async function route() {
   const path = location.pathname;
-  for (const [re, fn, nav] of routes) {
+  for (const [re, fn, nav] of FULL_APP() ? routes : webRoutes) {
     const m = path.match(re);
     if (m) {
       $$('[data-nav]').forEach((a) => a.classList.toggle('active', a.dataset.nav === nav));
@@ -195,11 +194,12 @@ async function route() {
       return;
     }
   }
+  if (!FULL_APP()) return viewNeedsApp();
   app.innerHTML = `<div class="empty"><h3>Page not found</h3><a class="btn" href="/" data-link>Back to the store</a></div>`;
 }
 document.addEventListener('click', (e) => {
   const a = e.target.closest('a[data-link]');
-  if (a && !e.metaKey && !e.ctrlKey && !e.shiftKey && a.origin === location.origin) { e.preventDefault(); go(a.pathname + a.search); }
+  if (a && !e.metaKey && !e.ctrlKey && !e.shiftKey && a.origin === location.origin) { e.preventDefault(); go(a.pathname + a.search + a.hash); }
 });
 window.addEventListener('popstate', route);
 
@@ -319,7 +319,7 @@ async function viewGame(slug) {
           ${g.tagline ? `<div class="tagline">${esc(g.tagline)}</div>` : ''}
           <div class="tags">${soon ? '<span class="tag" style="color:var(--warn)">Coming soon</span>' : ''}${g.isAi ? '<span class="tag" style="color:#d9a7ff">AI-made</span>' : ''}${g.tags.map((t) => `<span class="tag">${esc(t)}</span>`).join('')}</div>
           <div class="actions">
-            ${g.playUrl ? `<button class="btn primary big" id="play">${I.play}Play in browser</button>` : ''}
+            ${g.playUrl ? `<button class="btn ${desk.api && winFile(g) ? '' : 'primary'} big" id="play">${I.play}Play in browser</button>` : ''}
             ${deskSlot(g, 'big')}
             ${best && !(desk.api && winFile(g)) ? `<a class="btn ${g.playUrl ? '' : 'primary'} big" href="/api/download/${best.id}">${I.download}Download for ${PLAT_NAME[os]}</a>` : ''}
             ${!g.playUrl && !best && g.files.length && !(desk.api && winFile(g)) ? `<a class="btn primary big" href="#downloads">${I.download}See downloads</a>` : ''}
@@ -348,7 +348,6 @@ async function viewGame(slug) {
             ${g.files.map((f) => `<a class="dl ${f.platform === os ? 'recommended' : ''}" href="/api/download/${f.id}">${I[f.platform]}<span class="name">${esc(f.filename)}${f.version ? ` <span class="hint">v${esc(f.version)}</span>` : ''}</span><span class="size">${fmtSize(f.size)}</span></a>`).join('')}
             ${!g.playUrl && !g.files.length ? `<div class="hint">${soon ? 'Not out yet. Add it to your wishlist to keep track.' : 'No builds uploaded yet.'}</div>` : ''}
           </div>
-          ${!desk.api && g.files.some((f) => f.platform === 'windows') ? '<div class="hint" style="margin-top:10px">Tip: <a href="/download" data-link style="color:var(--accent)">GlitchBox for Windows</a> installs and updates games for you.</div>' : ''}
         </div>
         <div class="panel" style="margin-top:16px"><h3>Details</h3>
           <dl class="spec">${details.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>
@@ -1123,23 +1122,127 @@ function deskSettingsBind() {
   });
 }
 
-// ---------- "Get the Windows app" page (website only) ----------
-async function viewDownload() {
-  let d = { available: false };
-  try { d = await api('/api/desktop'); } catch {}
+// ---------- Website (info only) ----------
+// The full store, library, community and uploads live in the GlitchBox apps. In a normal
+// browser the site is an info site that points people to the download.
+const FULL_APP = () => !!desk.api; // later: || window.Capacitor (Android and iPhone apps)
+let deskDownload = null;
+const getDownload = async () => deskDownload ||= await api('/api/desktop').catch(() => ({ available: false }));
+const dlButton = (d, cls = 'primary big') => d.available
+  ? `<a class="btn ${cls}" href="${esc(d.url)}">${I.windows}Download for Windows${d.version ? ` <span class="dl-ver">v${esc(d.version)}</span>` : ''}</a>`
+  : `<span class="btn ${cls} disabled" title="The first release is on its way">${I.windows}Windows download coming soon</span>`;
+
+const webRoutes = [
+  [/^\/$/, viewLanding, 'home'],
+  [/^\/download$/, () => viewLanding('download'), 'home'],
+  [/^\/developers$/, viewDevInfo, 'developers'],
+  [/^\/game\/([^/]+)$/, viewGamePreview, ''],
+];
+
+function renderWebNav() {
+  $('.nav-links').innerHTML = `
+    <a href="/" data-link data-nav="home">Home</a>
+    <a href="/#features" data-link data-nav="features">Features</a>
+    <a href="/developers" data-link data-nav="developers">For developers</a>`;
+  $('#nav-right').innerHTML = '<a class="btn primary small" href="/download" data-link>' + I.download + '<span>Get GlitchBox</span></a>';
+}
+
+async function viewLanding(focus) {
+  document.title = 'GlitchBox · The home of independent games';
+  const [d, games] = await Promise.all([getDownload(), api('/api/games?sort=popular').then((r) => r.games.slice(0, 8)).catch(() => [])]);
+  const feats = [
+    ['One-click installs', 'Every game installs with a single click. Downloads pause, resume and unpack themselves.'],
+    ['Automatic updates', 'Games update in the background, and you can read the patch notes for every version.'],
+    ['Your library', 'Everything you own in one place, with playtime for every game.'],
+    ['Community', 'Chat with players and developers, share ideas and follow upcoming games.'],
+    ['Wishlist alerts', 'Get a notification the moment a game you are waiting for comes out.'],
+    ['Works offline', 'Installed games keep working with no internet connection.'],
+  ];
   app.innerHTML = `
-    <div class="hero intro" style="min-height:380px"><div class="hero-body">
-      <div class="hero-kicker">GlitchBox for Windows</div>
-      <h1>Your games, one click away.</h1>
-      <p>Install games with one click, keep them updated automatically, track your playtime and get notified when wishlisted games release. Free, like everything on GlitchBox.</p>
-      ${d.available ? `<a class="btn primary big" href="${esc(d.url)}">${I.windows}Download for Windows${d.version ? ` <span style="opacity:.7;font-weight:500">v${esc(d.version)}</span>` : ''}</a>`
-        : '<span class="btn big" style="cursor:default">Coming soon</span>'}
-      <div class="hint" style="margin-top:12px">Windows 10 and 11, 64-bit.</div>
-    </div><img class="hero-logo" src="/brand/logo-full.webp" alt="GlitchBox"></div>
-    <div class="grid" style="margin-top:24px;grid-template-columns:repeat(auto-fill,minmax(230px,1fr))">
-      ${[['One-click installs', 'Downloads pause and resume, and games unzip themselves.'], ['Automatic updates', 'Games update in the background, with patch notes.'], ['Playtime and library', 'See what you played and for how long.'], ['Works offline', 'Play installed games even with no internet.']]
-        .map(([t, d]) => `<div class="panel"><h3 style="margin:0 0 6px">${t}</h3><div class="hint">${d}</div></div>`).join('')}
-    </div>`;
+    <section class="land-hero">
+      <div class="land-copy">
+        <div class="hero-kicker">Free for players and developers</div>
+        <h1>The home of <span class="grad">independent games</span>.</h1>
+        <p>GlitchBox is a free game launcher for indie and AI-made games. Find new games, install them in one click and keep them up to date automatically.</p>
+        <div class="row" id="download">${dlButton(d)}</div>
+        <div class="hint" style="margin-top:12px">Windows 10 and 11, 64-bit. Android and iPhone apps are coming later.</div>
+      </div>
+      <img class="land-logo" src="/brand/logo-full.webp" alt="GlitchBox">
+    </section>
+    <section class="land-shot"><img src="/brand/app-store.webp" alt="The GlitchBox app showing the game store" loading="lazy"></section>
+    <h2 class="land-h" id="features">Everything in one app</h2>
+    <div class="land-grid">${feats.map(([t, x]) => `<div class="panel"><h3>${t}</h3><div class="hint">${x}</div></div>`).join('')}</div>
+    ${games.length ? `<h2 class="land-h">Games on GlitchBox</h2>
+      <div class="land-games">${games.map((g) => `<a class="land-game" href="/game/${esc(g.slug)}" data-link><div class="cover">${coverHtml(g)}</div><b>${esc(g.title)}</b><span class="hint">${esc(g.developer)}</span></a>`).join('')}</div>` : ''}
+    <section class="land-cta panel">
+      <div><h2>Make games? Put them on GlitchBox.</h2><p class="hint">Free to publish, with a proper store page, automatic updates for your players and a community to grow with.</p></div>
+      <a class="btn big" href="/developers" data-link>For developers</a>
+    </section>
+    <h2 class="land-h">Questions</h2>
+    <div class="faq">${[
+      ['Is it really free?', 'Yes. GlitchBox is free for players and free for developers to publish on.'],
+      ['Why do I need the app?', 'The app installs, updates and launches your games, tracks playtime and keeps your library in one place. The website is just here to tell you about it.'],
+      ['Do I need a password?', 'No. You sign in with your email and a 6-digit code, and the app keeps you signed in.'],
+      ['What about Mac, Linux and phones?', 'Windows comes first. Android and iPhone apps are planned.'],
+      ['Windows says it protected my PC?', 'Early versions of new apps can show this message. Click "More info" and then "Run anyway".'],
+    ].map(([q, a]) => `<details class="panel"><summary>${q}</summary><p class="hint">${a}</p></details>`).join('')}</div>
+    <section class="land-hero small"><div class="land-copy"><h2>Ready to play?</h2><div class="row">${dlButton(d)}</div></div></section>`;
+  if (focus === 'download') $('#download')?.scrollIntoView({ block: 'center' });
+  else if (location.hash) $(location.hash)?.scrollIntoView();
+}
+
+async function viewDevInfo() {
+  document.title = 'For developers · GlitchBox';
+  const d = await getDownload();
+  const steps = [
+    ['Get the app and sign in', 'Download GlitchBox for Windows and sign in with your email. No passwords.'],
+    ['Create your store page', 'Add a title, description, cover, screenshots, tags, controls and age rating. A checklist shows what is missing before you can publish.'],
+    ['Upload your build', 'Upload a browser game (.zip with index.html) or downloads for Windows, Mac, Linux and Android. Big files are fine.'],
+    ['Publish and update', 'Players install with one click. Upload a new version with patch notes and every player gets it automatically.'],
+  ];
+  app.innerHTML = `
+    <section class="land-hero">
+      <div class="land-copy">
+        <div class="hero-kicker">For developers</div>
+        <h1>Publish your game <span class="grad">for free</span>.</h1>
+        <p>Indie studio, solo developer or AI game maker, GlitchBox gives your game a professional store page and gets it in front of players, with no fees.</p>
+        <div class="row">${dlButton(d)}</div>
+      </div>
+    </section>
+    <h2 class="land-h">How it works</h2>
+    <div class="land-grid steps">${steps.map(([t, x], i) => `<div class="panel"><div class="step-n">${i + 1}</div><h3>${t}</h3><div class="hint">${x}</div></div>`).join('')}</div>
+    <h2 class="land-h">What you can upload</h2>
+    <div class="panel"><div class="formats">${[['Browser game', '.zip with index.html, or a single .html'], ['Windows', '.zip, .exe, .msi, .7z'], ['macOS', '.zip, .dmg'], ['Linux', '.zip, .tar.gz, .AppImage'], ['Android', '.apk']]
+      .map(([p, f]) => `<div><b>${p}</b><span class="hint">${f}</span></div>`).join('')}</div>
+      <p class="hint" style="margin:14px 0 0">Windows games installed through the app update themselves when you upload a new version.</p></div>`;
+}
+
+// A shared game link opens a short preview with a download button. The full page is in the app.
+async function viewGamePreview(slug) {
+  let g;
+  try { ({ game: g } = await api('/api/games/' + encodeURIComponent(slug))); } catch { return viewNeedsApp(); }
+  document.title = `${g.title} · GlitchBox`;
+  const d = await getDownload();
+  const shots = g.screenshots.slice(0, 3);
+  app.innerHTML = `
+    <section class="preview panel">
+      <div class="preview-cover">${g.banner ? `<img src="${esc(g.banner)}" alt="">` : coverHtml(g)}</div>
+      <div class="preview-body">
+        <div class="hero-kicker">${g.status === 'upcoming' ? 'Coming soon on GlitchBox' : 'Available on GlitchBox'}</div>
+        <h1>${esc(g.title)}</h1>
+        <div class="hint">by ${esc(g.developer)} · ${esc(g.genre)}</div>
+        ${g.tagline ? `<p>${esc(g.tagline)}</p>` : ''}
+        <div class="row">${dlButton(d)}<a class="btn big" href="glitchbox://game/${esc(g.slug)}">Open in GlitchBox</a></div>
+        <div class="hint" style="margin-top:10px">Get the free GlitchBox app to install and play ${esc(g.title)}.</div>
+      </div>
+    </section>
+    ${shots.length ? `<div class="preview-shots">${shots.map((s) => `<img src="${esc(s.url)}" alt="" loading="lazy">`).join('')}</div>` : ''}`;
+}
+
+function viewNeedsApp() {
+  app.innerHTML = `<div class="empty"><h3>This part of GlitchBox is in the app</h3>
+    <p>The store, your library, the community and uploads all live in GlitchBox for Windows.</p>
+    <a class="btn primary" href="/download" data-link>${I.download}Get GlitchBox</a></div>`;
 }
 
 // ---------- boot ----------
@@ -1147,6 +1250,7 @@ async function viewDownload() {
   const [{ user }, meta] = await Promise.all([api('/api/me'), api('/api/meta')]);
   state.me = user; state.meta = meta;
   await deskInit().catch(() => {});
+  if (!FULL_APP()) { document.body.classList.add('website'); renderWebNav(); return route(); }
   renderNav();
   await route();
   if (user && !user.username) loginModal();

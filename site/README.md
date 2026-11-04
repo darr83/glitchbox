@@ -19,6 +19,7 @@
 - **Store page setup**: every game starts as a draft and only goes live once its store page is complete: title, short and full description, tags, cover, 3+ screenshots, controls, languages, age rating, a playable build (or a release date for upcoming games) and system requirements when there are downloads. Banner and trailer (YouTube/Vimeo) are optional. A live checklist shows what is missing, and the server enforces the same rules.
 - **Uploads**: browser builds (.zip with index.html, or one .html) plus Windows, macOS, Linux, Android and Other downloads. Files go straight into R2, big ones in 50 MB chunks, so multi-GB games are fine.
 - **Login**: email + 6-digit code, no passwords, stays logged in for a year.
+- **Website = info site**: in a normal browser the site shows only a home page, a For developers page and short previews for shared game links, all pointing to the download. The store, library, community and uploads open only inside the GlitchBox app (`FULL_APP()` in `public/app.js`). The API itself is unchanged.
 - **Windows app**: GlitchBox for Windows lives in the `desktop/` folder of this repository (see its README). When the site runs inside it, game pages get Install, Play, Update and Uninstall buttons, and `/download` offers the installer once CI has uploaded it to R2 under `desktop/`.
 - **Installable**: it is a Progressive Web App (manifest, icons, service worker), the first step towards the Windows, Android and iPhone apps.
 

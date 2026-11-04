@@ -389,4 +389,60 @@ code.path { flex: 1; min-width: 0; padding: 8px 12px; border-radius: 9px; backgr
 body.desktop .nav { -webkit-app-region: drag; padding-right: 150px; }
 body.desktop .nav a, body.desktop .nav button, body.desktop .nav input { -webkit-app-region: no-drag; }
 body.desktop .footer { display: none; }
-@media (max-width: 680px) { .get-app { display: none; } }
+
+/* ---------- Website (info only) ---------- */
+.grad { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.btn.disabled { opacity: .6; cursor: default; }
+.dl-ver { opacity: .7; font-weight: 500; }
+.land-hero { position: relative; display: flex; align-items: center; gap: 24px; min-height: 420px; padding: 48px; border-radius: 22px; border: 1px solid var(--line); overflow: hidden;
+  background: radial-gradient(circle at 85% 15%, rgba(224, 64, 251, .28), transparent 50%), radial-gradient(circle at 60% 95%, rgba(34, 230, 255, .2), transparent 50%), var(--panel); }
+.land-hero.small { min-height: 0; justify-content: center; text-align: center; margin-top: 40px; }
+.land-hero.small .row { justify-content: center; }
+.land-copy { flex: 1; max-width: 580px; position: relative; z-index: 1; }
+.land-copy h1 { font-size: clamp(32px, 5vw, 52px); line-height: 1.05; letter-spacing: -1.2px; margin: 10px 0 14px; }
+.land-copy h2 { font-size: 28px; margin: 0 0 18px; }
+.land-copy p { color: #c3cad6; font-size: 17px; margin: 0 0 24px; }
+.land-logo { width: min(40%, 440px); filter: drop-shadow(0 20px 40px rgba(124, 108, 255, .35)); }
+.land-shot { margin: 28px 0 0; border-radius: 18px; overflow: hidden; border: 1px solid var(--line); box-shadow: 0 30px 80px rgba(124, 108, 255, .18); }
+.land-shot img { display: block; width: 100%; }
+.land-h { font-size: 26px; margin: 48px 0 18px; letter-spacing: -.4px; }
+.land-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+@media (max-width: 900px) { .land-grid { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 560px) { .land-grid { grid-template-columns: 1fr; } }
+.land-grid.steps { grid-template-columns: repeat(4, 1fr); }
+@media (max-width: 900px) { .land-grid.steps { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 560px) { .land-grid.steps { grid-template-columns: 1fr; } }
+.land-grid h3 { margin: 0 0 6px; }
+.land-grid.steps .step-n { width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; background: var(--grad); color: #071013; font-weight: 800; margin-bottom: 12px; }
+.land-games { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; }
+.land-game { display: flex; flex-direction: column; gap: 2px; }
+.land-game .cover { aspect-ratio: 16 / 9; border-radius: 12px; overflow: hidden; margin-bottom: 8px; border: 1px solid var(--line); transition: transform .15s; }
+.land-game:hover .cover { transform: translateY(-3px); }
+.land-game .cover img, .land-game .gen-cover { width: 100%; height: 100%; object-fit: cover; }
+.land-cta { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-top: 48px; padding: 30px;
+  background: linear-gradient(120deg, rgba(34, 230, 255, .1), rgba(224, 64, 251, .12)), var(--panel); }
+.land-cta h2 { margin: 0 0 6px; }
+.land-cta p { margin: 0; }
+.faq { display: flex; flex-direction: column; gap: 10px; }
+.faq details { padding: 16px 20px; }
+.faq summary { cursor: pointer; font-weight: 650; }
+.faq p { margin: 10px 0 0; font-size: 14.5px; }
+.formats { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 14px; }
+.formats > div { display: flex; flex-direction: column; gap: 2px; }
+.preview { display: grid; grid-template-columns: 1.3fr 1fr; gap: 28px; align-items: center; }
+.preview-cover { aspect-ratio: 16 / 9; border-radius: 12px; overflow: hidden; }
+.preview-cover img, .preview-cover .gen-cover { width: 100%; height: 100%; object-fit: cover; }
+.preview-body h1 { margin: 6px 0 4px; font-size: 34px; }
+.preview-body p { color: #c3cad6; }
+.preview-body .row { margin-top: 18px; flex-wrap: wrap; }
+.preview-shots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 14px; }
+.preview-shots img { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 12px; border: 1px solid var(--line); }
+@media (max-width: 760px) {
+  .land-hero { flex-direction: column-reverse; padding: 28px 22px; min-height: 0; text-align: left; }
+  .land-logo { width: 70%; }
+  .land-cta { flex-direction: column; align-items: flex-start; }
+  .preview { grid-template-columns: 1fr; }
+  .preview-shots { grid-template-columns: 1fr 1fr; }
+  .preview-shots img:nth-child(3) { display: none; }
+  body.website .nav-links { display: none; }
+}
