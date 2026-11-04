@@ -11,6 +11,11 @@ name: Windows app
 
 on:
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      site_url:
+        type: string
+        required: false
   push:
     tags: ['v*']
 
@@ -35,7 +40,7 @@ jobs:
       - name: Build installer
         run: npm run dist:win
         env:
-          GLITCHBOX_URL: ${{ vars.GLITCHBOX_URL }}
+          GLITCHBOX_URL: ${{ inputs.site_url || vars.GLITCHBOX_URL }}
           # Optional code signing (removes the SmartScreen warning). Leave unset to skip.
           CSC_LINK: ${{ secrets.WINDOWS_CERT_BASE64 }}
           CSC_KEY_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}

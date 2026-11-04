@@ -1,0 +1,76 @@
+# One-click setup and deploy for the whole of GlitchBox.
+# Actions tab > "Deploy GlitchBox" > Run workflow. Safe to run again: it reuses what exists.
+#
+# 1. Creates the D1 database and R2 bucket on first run, applies database migrations.
+# 2. Puts the site live (on your free workers.dev address, or your own domain later).
+# 3. Builds the Windows installer for that address and publishes it to /download.
+#
+# Needs repository secrets CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID.
+# Optional: secret RESEND_API_KEY and variable MAIL_FROM (e.g. "GlitchBox <login@yourdomain.com>")
+# for login emails, and variable GLITCHBOX_URL once you have your own domain.
+name: Deploy GlitchBox
+
+on:
+  workflow_dispatch:
+  # To deploy the site automatically on every change, uncomment:
+  # push:
+  #   branches: [main]
+  #   paths: ['site/**']
+
+concurrency: deploy
+
+jobs:
+  site:
+    runs-on: ubuntu-latest
+    outputs:
+      url: ${{ steps.deploy.outputs.url }}
+    defaults:
+      run:
+        working-directory: site
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+      - run: npm ci
+
+      - name: Database (create on first run)
+        run: |
+          find_id() { npx wrangler d1 list --json | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const d=JSON.parse(s).find(x=>x.name==="glitchbox");console.log(d?d.uuid:"")})'; }
+          ID=$(find_id)
+          if [ -z "$ID" ]; then npx wrangler d1 create glitchbox; ID=$(find_id); fi
+          [ -n "$ID" ] || { echo "Could not create the D1 database"; exit 1; }
+          sed -i "s/REPLACE_WITH_YOUR_D1_ID/$ID/" wrangler.jsonc
+          npx wrangler d1 migrations apply glitchbox --remote
+
+      - name: File storage (create on first run)
+        run: npx wrangler r2 bucket create glitchbox-files || echo "Bucket already exists"
+
+      - name: Deploy the site
+        id: deploy
+        run: |
+          # Until you verify your own domain in Resend, send from Resend's test address (it only reaches your own Resend email).
+          FROM="${{ vars.MAIL_FROM }}"; [ -n "$FROM" ] || FROM="GlitchBox <onboarding@resend.dev>"
+          npx wrangler deploy ${FROM:+--var "MAIL_FROM:$FROM"} | tee deploy.log
+          URL="${{ vars.GLITCHBOX_URL }}"
+          [ -n "$URL" ] || URL=$(grep -oE 'https://[a-zA-Z0-9.-]+\.workers\.dev' deploy.log | head -1)
+          [ -n "$URL" ] || { echo "No site address found. Open Workers & Pages in the Cloudflare dashboard once to pick your workers.dev name, then run this again."; exit 1; }
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+          echo "### GlitchBox is live at $URL" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Login email key
+        if: ${{ env.RESEND_API_KEY != '' }}
+        run: echo "$RESEND_API_KEY" | npx wrangler secret put RESEND_API_KEY
+
+  windows-app:
+    needs: site
+    uses: ./.github/workflows/desktop.yml
+    with:
+      site_url: ${{ needs.site.outputs.url }}
+    secrets: inherit
