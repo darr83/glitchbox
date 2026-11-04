@@ -705,7 +705,7 @@ async function viewEditor(id) {
             <label class="field"><span>Windows launch file <em class="hint">optional</em></span><input class="input" name="launchPath" maxlength="260" value="${esc((g?.files || []).find((f) => f.platform === 'windows')?.launchPath || '')}" placeholder="e.g. MyGame.exe or Bin/MyGame.exe"></label>
           </div>
           <label class="field"><span>What's new <em class="hint">patch notes shown to players when you upload a new version</em></span><textarea class="input" name="buildNotes" rows="3" maxlength="4000" placeholder="- Fixed a crash on level 3&#10;- Added controller support"></textarea></label>
-          <div class="hint" style="margin:-6px 0 16px">A new upload replaces the old Windows build, and players who installed it get the update automatically.</div>
+          <div class="hint" style="margin:-6px 0 16px">A new upload replaces the old Windows build, and players who installed it get the update automatically. Drafts that are never published lose their uploaded builds after 90 days without changes.</div>
           ${platRow('windows', '.zip (best), .exe, .msi')}`)}
 
         ${sec(5, 'System requirements', 'Needed if you offer downloads, so players know it will run.', `

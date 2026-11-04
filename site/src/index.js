@@ -175,15 +175,38 @@ export default {
     }
   },
 
-  // Daily cleanup (add a cron trigger in wrangler.jsonc to enable).
+  // Daily cleanup, run by the cron trigger in wrangler.jsonc.
   async scheduled(event, env) {
-    await env.DB.batch([
-      env.DB.prepare('DELETE FROM login_codes WHERE expires_at < ?').bind(now()),
-      env.DB.prepare('DELETE FROM code_requests WHERE at < ?').bind(now() - 86400000),
-      env.DB.prepare('DELETE FROM sessions WHERE last_seen < ?').bind(now() - SESSION_DAYS * 86400000),
-    ]);
+    await cleanup(env);
   },
 };
+
+// ---------- cleanup ----------
+const DAY = 86400000;
+const TESTER_CHAT_KEEP_DAYS = 30; // tester chats are deleted this long after the game is released
+const DRAFT_FILES_KEEP_DAYS = 90; // never-published drafts lose their uploaded builds after this long untouched
+async function cleanup(env) {
+  const t = now();
+  await env.DB.batch([
+    env.DB.prepare('DELETE FROM login_codes WHERE expires_at < ?').bind(t),
+    env.DB.prepare('DELETE FROM code_requests WHERE at < ?').bind(t - DAY),
+    env.DB.prepare('DELETE FROM sessions WHERE last_seen < ?').bind(t - SESSION_DAYS * DAY),
+    env.DB.prepare(`DELETE FROM posts WHERE channel IN (SELECT 'game:' || id FROM games
+      WHERE status NOT IN ('alpha', 'beta') AND released_at IS NOT NULL AND released_at < ?)`).bind(t - TESTER_CHAT_KEEP_DAYS * DAY),
+  ]);
+  // Abandoned drafts: keep the store page text and images, remove the builds.
+  const { results } = await env.DB.prepare(`SELECT g.id FROM games g WHERE g.published = 0 AND g.published_at IS NULL AND g.updated_at < ?
+    AND (g.web_prefix IS NOT NULL OR EXISTS (SELECT 1 FROM game_files f WHERE f.game_id = g.id)) LIMIT 50`).bind(t - DRAFT_FILES_KEEP_DAYS * DAY).all();
+  for (const { id } of results) {
+    await deletePrefix(env, `g/${id}/files/`);
+    await deletePrefix(env, `g/${id}/web/`);
+    await env.DB.batch([
+      env.DB.prepare('DELETE FROM game_files WHERE game_id = ?').bind(id),
+      env.DB.prepare('UPDATE games SET web_prefix = NULL, web_entry = NULL WHERE id = ?').bind(id),
+    ]);
+  }
+  return { draftsCleared: results.length };
+}
 
 // ---------- sessions ----------
 async function loadSession(c) {

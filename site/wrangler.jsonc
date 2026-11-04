@@ -22,6 +22,8 @@
     "bindings": [{ "name": "CHAT", "class_name": "ChatHub" }]
   },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["ChatHub"] }],
+  // Daily cleanup at 04:00 UTC (see cleanup() in src/index.js).
+  "triggers": { "crons": ["0 4 * * *"] },
   "vars": {
     "SITE_NAME": "GlitchBox",
     "MAIL_FROM": "GlitchBox <login@yourdomain.com>",

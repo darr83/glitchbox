@@ -19,6 +19,7 @@
 - **Community**: live chat channels; devs can attach their game to a message.
 - **Store page setup**: every game starts as a draft and only goes live once its store page is complete: title, short and full description, tags, cover, 3+ screenshots, controls, languages, age rating, a playable build (or a release date for upcoming games) and system requirements when there are downloads. Banner and trailer (YouTube/Vimeo) are optional. A live checklist shows what is missing, and the server enforces the same rules.
 - **Uploads**: browser builds (.zip with index.html, or one .html) plus Windows games (.zip, .exe, .msi). For now GlitchBox supports browser and Windows games only. Files go straight into R2, big ones in 50 MB chunks, so multi-GB games are fine.
+- **Daily cleanup** (cron, 04:00 UTC): clears expired login codes and old sessions, deletes tester chats 30 days after a game is released, and removes uploaded builds from drafts that were never published and untouched for 90 days. Community chat is kept. Change the numbers at the top of cleanup() in src/index.js.
 - **Login**: email + 6-digit code, no passwords, stays logged in for a year.
 - **Windows app**: GlitchBox for Windows lives in the `desktop/` folder of this repository (see its README). When the site runs inside it, game pages get Install, Play, Update and Uninstall buttons, and `/download` offers the installer once CI has uploaded it to R2 under `desktop/`.
 
