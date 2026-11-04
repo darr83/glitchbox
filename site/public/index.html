@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Not Steam</title>
+  <meta name="description" content="GlitchBox: the home of independent games. Free for indie and AI developers to share their games.">
+  <link rel="icon" type="image/png" href="/icons/favicon-64.png">
+  <link rel="stylesheet" href="/style.css">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="theme-color" content="#0b0a14">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-180.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+</head>
+<body>
+  <nav class="nav">
+    <a class="logo" href="/" data-link aria-label="GlitchBox home"><img src="/brand/logo-word.png" alt="GlitchBox" width="520" height="113"></a>
+    <div class="nav-links">
+      <a href="/" data-link data-nav="store">Store</a>
+      <a href="/library" data-link data-nav="library">Library</a>
+      <a href="/community" data-link data-nav="community">Community</a>
+    </div>
+    <div class="nav-right" id="nav-right"></div>
+  </nav>
+  <main id="app"></main>
+  <footer class="footer"><img src="/brand/logo-text.webp" alt="GlitchBox, the home of independent games" loading="lazy"><span>Free for players and developers. Made for indie and AI game makers.</span></footer>
+  <div class="toasts" id="toasts"></div>
+  <script src="/vendor/fflate.min.js" defer></script>
+  <script src="/app.js"></script>
+  <script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});</script>
+</body>
+</html>

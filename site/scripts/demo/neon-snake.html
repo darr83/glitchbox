@@ -1,0 +1,16 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Neon Snake</title>
+<style>html,body{margin:0;height:100%;background:#0a0612;display:grid;place-items:center;font-family:system-ui,sans-serif;color:#fff}canvas{max-width:100vw;max-height:100vh;image-rendering:pixelated}</style></head>
+<body><canvas id="c" width="600" height="600"></canvas><script>
+const c=document.getElementById('c'),x=c.getContext('2d'),N=24,S=25;let sn,d,nd,f,sc,over=true,hi=0;
+function reset(){sn=[{x:12,y:12},{x:11,y:12},{x:10,y:12}];d={x:1,y:0};nd=d;sc=0;over=false;food()}
+function food(){do{f={x:Math.random()*N|0,y:Math.random()*N|0}}while(sn.some(s=>s.x==f.x&&s.y==f.y))}
+onkeydown=e=>{const k={ArrowUp:[0,-1],ArrowDown:[0,1],ArrowLeft:[-1,0],ArrowRight:[1,0],w:[0,-1],s:[0,1],a:[-1,0],d:[1,0]}[e.key];if(k&&(k[0]!=-d.x||k[1]!=-d.y))nd={x:k[0],y:k[1]};if(over&&(e.key==' '||e.key=='Enter'))reset();e.preventDefault()};
+onclick=()=>{if(over)reset()};
+function step(){if(!over){d=nd;const h={x:(sn[0].x+d.x+N)%N,y:(sn[0].y+d.y+N)%N};if(sn.some(s=>s.x==h.x&&s.y==h.y)){over=true;hi=Math.max(hi,sc)}else{sn.unshift(h);if(h.x==f.x&&h.y==f.y){sc++;food()}else sn.pop()}}draw()}
+function draw(){x.fillStyle='#0a0612';x.fillRect(0,0,600,600);x.strokeStyle='rgba(255,255,255,.04)';for(let i=0;i<=N;i++){x.beginPath();x.moveTo(i*S,0);x.lineTo(i*S,600);x.moveTo(0,i*S);x.lineTo(600,i*S);x.stroke()}
+x.shadowBlur=18;x.shadowColor='#ff4fd8';x.fillStyle='#ff4fd8';x.fillRect(f.x*S+5,f.y*S+5,S-10,S-10);
+x.shadowColor='#6aa8ff';sn.forEach((s,i)=>{x.fillStyle='hsl('+(200+i*4)+' 90% '+(70-i)+'%)';x.fillRect(s.x*S+2,s.y*S+2,S-4,S-4)});x.shadowBlur=0;
+x.fillStyle='#fff';x.font='bold 20px system-ui';x.fillText('Score '+sc+'   Best '+hi,14,28);
+if(over){x.fillStyle='rgba(10,6,18,.75)';x.fillRect(0,0,600,600);x.textAlign='center';x.fillStyle='#fff';x.font='bold 54px system-ui';x.fillText('NEON SNAKE',300,280);x.font='18px system-ui';x.fillStyle='#b9a8d9';x.fillText('Press Space or click to play. Arrows or WASD to steer.',300,320);x.textAlign='left'}}
+reset();over=true;setInterval(step,90);
+</script></body></html>

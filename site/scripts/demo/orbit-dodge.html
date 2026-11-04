@@ -1,0 +1,18 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Orbit Dodge</title>
+<style>html,body{margin:0;height:100%;background:#05060a;overflow:hidden;font-family:system-ui,sans-serif}canvas{display:block;width:100%;height:100%}</style></head>
+<body><canvas id="c"></canvas><script>
+const c=document.getElementById('c'),x=c.getContext('2d');let W,H;function rs(){W=c.width=innerWidth;H=c.height=innerHeight}rs();onresize=rs;
+let p={x:0,y:0},rocks=[],stars=[],score=0,best=0,dead=true,t=0;
+for(let i=0;i<120;i++)stars.push({x:Math.random(),y:Math.random(),s:Math.random()*2});
+onmousemove=e=>{p.x=e.clientX;p.y=e.clientY};ontouchmove=e=>{p.x=e.touches[0].clientX;p.y=e.touches[0].clientY};
+onmousedown=ontouchstart=()=>{if(dead){dead=false;rocks=[];score=0}};
+function loop(){t++;x.fillStyle='#05060a';x.fillRect(0,0,W,H);
+for(const s of stars){x.fillStyle='rgba(255,255,255,'+(.3+s.s/3)+')';x.fillRect(((s.x*W)-(t*s.s*.3))%W+W*(s.x*W-t*s.s*.3<0),s.y*H,s.s,s.s)}
+if(!dead){score++;if(Math.random()<.04+score/40000){const a=Math.random()*6.28,r=Math.max(W,H);rocks.push({x:W/2+Math.cos(a)*r,y:H/2+Math.sin(a)*r,vx:0,vy:0,r:10+Math.random()*24,h:Math.random()*360});const k=rocks[rocks.length-1],d=Math.hypot(p.x-k.x,p.y-k.y),sp=2+Math.random()*3+score/1500;k.vx=(p.x-k.x)/d*sp;k.vy=(p.y-k.y)/d*sp}}
+for(const k of rocks){k.x+=k.vx;k.y+=k.vy;x.fillStyle='hsl('+k.h+' 70% 60%)';x.beginPath();x.arc(k.x,k.y,k.r,0,7);x.fill();if(!dead&&Math.hypot(k.x-p.x,k.y-p.y)<k.r+8){dead=true;best=Math.max(best,score)}}
+rocks=rocks.filter(k=>Math.hypot(k.x-W/2,k.y-H/2)<Math.max(W,H)*1.6);
+x.shadowColor='#7cf2c8';x.shadowBlur=20;x.fillStyle='#7cf2c8';x.beginPath();x.arc(p.x,p.y,8,0,7);x.fill();x.shadowBlur=0;
+x.fillStyle='#fff';x.font='bold 22px system-ui';x.fillText('Score '+Math.floor(score/10),20,36);x.fillStyle='#8f99ab';x.font='15px system-ui';x.fillText('Best '+Math.floor(best/10),20,58);
+if(dead){x.textAlign='center';x.fillStyle='#fff';x.font='bold 48px system-ui';x.fillText('ORBIT DODGE',W/2,H/2-20);x.font='18px system-ui';x.fillStyle='#8f99ab';x.fillText('Click to start. Move to dodge.',W/2,H/2+20);x.textAlign='left'}
+requestAnimationFrame(loop)}loop();
+</script></body></html>

@@ -1,0 +1,63 @@
+# Builds GlitchBox for Windows and publishes it to your Cloudflare R2 bucket.
+# The website then offers it at /download and installed apps update themselves.
+#
+# Run it from the Actions tab ("Run workflow"), or push a tag like v0.1.1.
+# Repository settings > Secrets and variables > Actions needs:
+#   secret   CLOUDFLARE_API_TOKEN   (token with "Workers R2 Storage: Edit")
+#   secret   CLOUDFLARE_ACCOUNT_ID
+#   variable GLITCHBOX_URL          (e.g. https://glitchbox.gg)
+#   variable R2_BUCKET              (optional, defaults to glitchbox-files)
+name: Windows app
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+      - run: npm ci
+      - name: Use the tag as the app version
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: npm version --no-git-tag-version --allow-same-version "${GITHUB_REF_NAME#v}"
+      - name: Build installer
+        run: npm run dist:win
+        env:
+          GLITCHBOX_URL: ${{ vars.GLITCHBOX_URL }}
+          # Optional code signing (removes the SmartScreen warning). Leave unset to skip.
+          CSC_LINK: ${{ secrets.WINDOWS_CERT_BASE64 }}
+          CSC_KEY_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: GlitchBox-Setup
+          path: |
+            desktop/dist/*.exe
+            desktop/dist/*.blockmap
+            desktop/dist/latest.yml
+      - name: Publish to R2
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          BUCKET: ${{ vars.R2_BUCKET || 'glitchbox-files' }}
+        run: |
+          cd dist
+          for f in *.exe *.blockmap; do
+            npx --yes wrangler@3 r2 object put "$BUCKET/desktop/$f" --file "$f" --remote
+          done
+          # A stable link for the website's download button.
+          npx --yes wrangler@3 r2 object put "$BUCKET/desktop/GlitchBox-Setup.exe" --file GlitchBox-Setup-*.exe --remote
+          # latest.yml goes last: installed apps start updating as soon as it changes.
+          npx --yes wrangler@3 r2 object put "$BUCKET/desktop/latest.yml" --file latest.yml --remote --content-type text/yaml

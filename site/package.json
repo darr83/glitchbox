@@ -1,0 +1,20 @@
+{
+  "name": "glitchbox",
+  "version": "1.0.0",
+  "description": "A free, simple game sharing platform for indie and AI developers, running on Cloudflare",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:migrate": "wrangler d1 migrations apply glitchbox --local",
+    "db:migrate:remote": "wrangler d1 migrations apply glitchbox --remote",
+    "seed": "node scripts/seed.mjs"
+  },
+  "devDependencies": {
+    "wrangler": "^4.157.0"
+  },
+  "dependencies": {
+    "fflate": "^0.8.3"
+  },
+  "private": true,
+  "type": "module"
+}

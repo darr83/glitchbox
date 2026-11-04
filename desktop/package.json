@@ -1,0 +1,72 @@
+{
+  "name": "glitchbox-desktop",
+  "version": "0.1.0",
+  "description": "GlitchBox for Windows: the home of independent games",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "node test/library.test.js",
+    "dist:win": "node scripts/write-config.js && electron-builder --win --publish never",
+    "dist:dir": "node scripts/write-config.js && electron-builder --win --dir --publish never"
+  },
+  "author": "GlitchBox",
+  "devDependencies": {
+    "electron": "^33.4.11",
+    "electron-builder": "^25.1.8"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.11",
+    "extract-zip": "^2.0.1"
+  },
+  "productName": "GlitchBox",
+  "private": true,
+  "build": {
+    "appId": "gg.glitchbox.app",
+    "productName": "GlitchBox",
+    "artifactName": "GlitchBox-Setup-${version}.${ext}",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "build/icon.png",
+      "app-config.json",
+      "package.json"
+    ],
+    "protocols": [
+      {
+        "name": "GlitchBox",
+        "schemes": [
+          "glitchbox"
+        ]
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "GlitchBox",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico"
+    },
+    "publish": [
+      {
+        "provider": "generic",
+        "url": "https://glitchbox.example/desktop"
+      }
+    ]
+  }
+}

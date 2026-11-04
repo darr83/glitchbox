@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>GlitchBox (offline)</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'">
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; background: #0b0a14; color: #e8e6f3; font: 15px/1.5 system-ui, "Segoe UI", sans-serif; }
+  header { height: 64px; display: flex; align-items: center; gap: 14px; padding: 0 28px; border-bottom: 1px solid #2a2645; -webkit-app-region: drag; }
+  header img { height: 34px; }
+  header span { color: #9a94b8; font-size: 13px; }
+  main { max-width: 980px; margin: 0 auto; padding: 28px; }
+  h1 { font-size: 24px; margin: 0 0 6px; }
+  p { color: #9a94b8; margin: 0 0 22px; }
+  .item { display: flex; align-items: center; gap: 16px; padding: 14px 16px; background: #16142a; border: 1px solid #2a2645; border-radius: 14px; margin-bottom: 10px; }
+  .item b { flex: 1; font-size: 16px; }
+  .item small { color: #9a94b8; display: block; font-weight: 400; }
+  button { font: inherit; font-weight: 650; padding: 9px 18px; border-radius: 10px; border: 0; cursor: pointer; background: linear-gradient(120deg, #22e6ff, #7c6cff 55%, #e040fb); color: #0b0a14; -webkit-app-region: no-drag; }
+  button.ghost { background: #1e1b36; color: #e8e6f3; border: 1px solid #2a2645; }
+  .empty { padding: 40px; text-align: center; color: #9a94b8; border: 1px dashed #2a2645; border-radius: 14px; }
+</style></head>
+<body>
+  <header><img src="logo-word.png" alt="GlitchBox"><span>Offline mode</span></header>
+  <main>
+    <div style="display:flex;align-items:center;gap:12px"><div style="flex:1"><h1>You're offline</h1><p>You can still play the games you have installed. The store and community come back when you reconnect.</p></div><button class="ghost" id="retry">Try again</button></div>
+    <div id="list"></div>
+  </main>
+  <script src="offline.js"></script>
+</body></html>
