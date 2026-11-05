@@ -18,6 +18,7 @@ if (!isGame) contextBridge.exposeInMainWorld('glitchbox', {
   cancel: (id) => call('gb:cancel', id),
   uninstall: (id) => call('gb:uninstall', id),
   play: (id) => call('gb:play', id),
+  openOnline: (id) => call('gb:openOnline', id),
   openFolder: (id) => call('gb:openFolder', id),
   checkUpdates: () => call('gb:checkUpdates'),
   getSettings: () => call('gb:getSettings'),

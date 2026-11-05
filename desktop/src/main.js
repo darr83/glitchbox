@@ -10,6 +10,9 @@ const bundled = (() => { try { return require('../app-config.json'); } catch { r
 const SITE = (process.env.GLITCHBOX_URL || bundled.siteUrl || 'http://localhost:8787').replace(/\/$/, '');
 const SITE_ORIGIN = new URL(SITE).origin;
 const PARTITION = 'persist:glitchbox';
+// Online games (hosted on the developer's own site) get their own storage, so they never see GlitchBox cookies
+// but still keep their own logins between sessions.
+const ONLINE_PARTITION = 'persist:glitchbox-online';
 const OFFLINE = path.join(__dirname, 'offline', 'offline.html');
 const ICON = path.join(__dirname, '..', 'build', 'icon.png');
 const PLATFORM = process.env.GLITCHBOX_PLATFORM || (process.platform === 'win32' ? 'windows' : process.platform === 'darwin' ? 'mac' : 'linux');
@@ -85,6 +88,40 @@ function createWindow() {
 function openGameWindow(url) {
   const w = new BrowserWindow({ width: 1280, height: 800, backgroundColor: '#000', autoHideMenuBar: true, icon: ICON, webPreferences: { partition: PARTITION, sandbox: true, contextIsolation: true } });
   w.loadURL(url);
+}
+// Online games open their own website in a plain window. The address comes from the GlitchBox API, never from the page.
+const onlineWindows = new Map();
+async function openOnlineGame(id) {
+  id = Number(id);
+  const open = onlineWindows.get(id);
+  if (open && !open.isDestroyed()) { if (open.isMinimized()) open.restore(); open.focus(); return true; }
+  const { game } = await (await library.api(`/api/games/${id}`)).json();
+  let url;
+  try { url = new URL(game?.onlineUrl || ''); } catch { throw new Error('This game has no online address'); }
+  if (url.protocol !== 'https:') throw new Error('This game has no online address');
+  const w = new BrowserWindow({
+    width: 1280, height: 800, title: game.title, backgroundColor: '#000', autoHideMenuBar: true, icon: ICON,
+    webPreferences: { partition: ONLINE_PARTITION, sandbox: true, contextIsolation: true, nodeIntegration: false },
+  });
+  // Links within the game stay in the window, links to other sites open in the normal browser.
+  w.webContents.setWindowOpenHandler(({ url: to }) => {
+    try {
+      if (new URL(to).origin === url.origin) return { action: 'allow', overrideBrowserWindowOptions: { autoHideMenuBar: true, icon: ICON, webPreferences: { partition: ONLINE_PARTITION, sandbox: true, contextIsolation: true } } };
+      if (/^https?:/.test(to)) shell.openExternal(to);
+    } catch {}
+    return { action: 'deny' };
+  });
+  w.webContents.on('will-navigate', (e, to) => { if (!/^https:/.test(to)) { e.preventDefault(); if (/^http:/.test(to)) shell.openExternal(to); } });
+  // Count the time the window was open as playtime, like installed games.
+  const started = Date.now();
+  onlineWindows.set(id, w);
+  w.on('closed', () => {
+    onlineWindows.delete(id);
+    const minutes = Math.round((Date.now() - started) / 60000);
+    if (minutes > 0) library.api(`/api/library/${id}/playtime`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ minutes: Math.min(minutes, 24 * 60) }) }).catch(() => {});
+  });
+  w.loadURL(url.href).catch(() => {});
+  return true;
 }
 function openPath(p = '/') { win?.loadURL(SITE + p).catch(() => {}); }
 function showWindow() { if (!win) return; if (win.isMinimized()) win.restore(); win.show(); win.focus(); }
@@ -198,6 +235,7 @@ function registerIpc() {
     await library.uninstall(id); buildTray(); return true;
   });
   handle('gb:play', (id) => playGame(id));
+  handle('gb:openOnline', (id) => openOnlineGame(id));
   handle('gb:openFolder', (id) => { const i = library.installs[id]; if (i) shell.openPath(i.dir); });
   handle('gb:checkUpdates', () => checkGameUpdates());
   handle('gb:getSettings', () => ({ ...settings, libraryPath: library.root }));
