@@ -36,10 +36,12 @@ const I = {
   check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>',
   search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5" stroke-linecap="round"/></svg>',
   upload: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 16V5m0 0L7.5 9.5M12 5l4.5 4.5M5 20h14"/></svg>',
+  online: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5"/><circle cx="17" cy="9" r="2.4"/><path d="M16 14.2c2.4-.3 4.2 1.3 4.6 4.3"/></svg>',
   full: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>',
 };
 const TEST_LABEL = { alpha: 'Alpha test', beta: 'Beta test' };
-const PLAT_NAME = { web: 'Browser', windows: 'Windows' };
+const PLAT_NAME = { web: 'Browser', online: 'Online', windows: 'Windows' };
+const hostOf = (u) => { try { return new URL(u).host; } catch { return ''; } };
 const platIcons = (ps) => `<span class="plats">${ps.map((p) => `<span title="${PLAT_NAME[p]}">${I[p] || ''}</span>`).join('')}</span>`;
 function detectOS() {
   const ua = navigator.userAgent;
@@ -205,7 +207,7 @@ window.addEventListener('popstate', route);
 const gameCard = (g) => `
   <a class="card" href="/game/${esc(g.slug)}" data-link>
     <div class="cover">${coverHtml(g)}
-      <div class="badges">${g.status === 'upcoming' ? '<span class="badge soon">COMING SOON</span>' : ''}${TEST_LABEL[g.status] ? `<span class="badge test">${TEST_LABEL[g.status].toUpperCase()}</span>` : ''}${g.isAi ? '<span class="badge ai">AI-MADE</span>' : ''}${g.playUrl ? '<span class="badge web">PLAY NOW</span>' : ''}</div>
+      <div class="badges">${g.status === 'upcoming' ? '<span class="badge soon">COMING SOON</span>' : ''}${TEST_LABEL[g.status] ? `<span class="badge test">${TEST_LABEL[g.status].toUpperCase()}</span>` : ''}${g.isAi ? '<span class="badge ai">AI-MADE</span>' : ''}${g.playUrl || g.onlineUrl ? '<span class="badge web">PLAY NOW</span>' : ''}</div>
     </div>
     <div class="card-body">
       <div class="card-title">${esc(g.title)}</div>
@@ -264,7 +266,7 @@ async function viewStore() {
         <div class="hero-kicker">Featured${f.isAi ? ' · AI-made' : ''}</div>
         <h1>${esc(f.title)}</h1>
         <p>${esc(f.tagline || 'by ' + f.developer)}</p>
-        <span class="btn primary big">${f.playUrl ? I.play + 'Play free now' : I.download + 'Get it free'}</span>
+        <span class="btn primary big">${f.playUrl || f.onlineUrl ? I.play + 'Play free now' : I.download + 'Get it free'}</span>
       </div>
     </a>` : `
     <div class="hero intro"><div class="hero-body">
@@ -340,10 +342,11 @@ async function viewGame(slug) {
           ${g.tagline ? `<div class="tagline">${esc(g.tagline)}</div>` : ''}
           <div class="tags">${soon ? '<span class="tag" style="color:var(--warn)">Coming soon</span>' : ''}${testing ? `<span class="tag test">${testing}</span>` : ''}${g.isAi ? '<span class="tag" style="color:#d9a7ff">AI-made</span>' : ''}${g.tags.map((t) => `<span class="tag">${esc(t)}</span>`).join('')}</div>
           <div class="actions">
-            ${g.playUrl ? `<button class="btn ${desk.api && winFile(g) ? '' : 'primary'} big" id="play">${I.play}Play in browser</button>` : ''}
+            ${g.onlineUrl ? `<button class="btn ${desk.api && winFile(g) ? '' : 'primary'} big" id="online">${I.play}Play online</button>` : ''}
+            ${g.playUrl ? `<button class="btn ${(desk.api && winFile(g)) || g.onlineUrl ? '' : 'primary'} big" id="play">${I.play}Play in browser</button>` : ''}
             ${deskSlot(g, 'big')}
-            ${best && !(desk.api && winFile(g)) ? `<a class="btn ${g.playUrl ? '' : 'primary'} big" href="/api/download/${best.id}">${I.download}Download for ${PLAT_NAME[os]}</a>` : ''}
-            ${!g.playUrl && !best && g.files.length && !(desk.api && winFile(g)) ? `<a class="btn primary big" href="#downloads">${I.download}See downloads</a>` : ''}
+            ${best && !(desk.api && winFile(g)) ? `<a class="btn ${g.playUrl || g.onlineUrl ? '' : 'primary'} big" href="/api/download/${best.id}">${I.download}Download for ${PLAT_NAME[os]}</a>` : ''}
+            ${!g.playUrl && !g.onlineUrl && !best && g.files.length && !(desk.api && winFile(g)) ? `<a class="btn primary big" href="#downloads">${I.download}See downloads</a>` : ''}
             <button class="btn big" id="lib">${g.inLibrary ? I.check + (soon ? 'On your wishlist' : 'In your library') : I.plus + (soon ? 'Add to wishlist' : 'Add to library')}</button>
             ${mine ? `<a class="btn ghost" href="/edit/${g.id}" data-link>Edit store page</a>` : ''}
           </div>
@@ -372,9 +375,10 @@ async function viewGame(slug) {
         <div class="panel" id="downloads">
           <h3>Platforms</h3>
           <div class="dl-list">
+            ${g.onlineUrl ? `<button class="dl" id="online2" style="cursor:pointer;text-align:left;color:inherit">${I.online}<span class="name">Play online</span><span class="size">${esc(hostOf(g.onlineUrl))}</span></button>` : ''}
             ${g.playUrl ? `<button class="dl" id="play2" style="cursor:pointer;text-align:left;color:inherit">${I.web}<span class="name">Play in your browser</span><span class="size">No install</span></button>` : ''}
             ${g.files.map((f) => `<a class="dl ${f.platform === os ? 'recommended' : ''}" href="/api/download/${f.id}">${I[f.platform]}<span class="name">${esc(f.filename)}${f.version ? ` <span class="hint">v${esc(f.version)}</span>` : ''}</span><span class="size">${fmtSize(f.size)}</span></a>`).join('')}
-            ${!g.playUrl && !g.files.length ? `<div class="hint">${soon ? 'Not out yet. Add it to your wishlist to keep track.' : 'No builds uploaded yet.'}</div>` : ''}
+            ${!g.playUrl && !g.onlineUrl && !g.files.length ? `<div class="hint">${soon ? 'Not out yet. Add it to your wishlist to keep track.' : 'No builds uploaded yet.'}</div>` : ''}
           </div>
         </div>
         <div class="panel" style="margin-top:16px"><h3>Details</h3>
@@ -412,6 +416,8 @@ async function viewGame(slug) {
   const play = () => openPlayer(g);
   $('#play')?.addEventListener('click', play);
   $('#play2')?.addEventListener('click', play);
+  $('#online')?.addEventListener('click', () => openOnline(g));
+  $('#online2')?.addEventListener('click', () => openOnline(g));
   $('#lib').onclick = async () => {
     if (!(await needLogin('Log in to build your library.'))) return;
     try {
@@ -441,6 +447,15 @@ function lightbox(srcs, start) {
   };
   addEventListener('keydown', key);
   document.body.append(el);
+}
+
+// Online games run on the developer's own website (they have their own servers and logins),
+// so they open in their own window, or a new tab on the website, never inside a GlitchBox frame.
+function openOnline(g) {
+  api(`/api/games/${g.id}/played`, { method: 'POST' }).catch(() => {});
+  if (state.me) api('/api/library/' + g.id, { method: 'POST' }).catch(() => {});
+  if (desk.api?.openOnline) { desk.api.openOnline(g.id).catch(() => toast('Could not open the game', 'error')); return; }
+  window.open(g.onlineUrl, '_blank', 'noopener');
 }
 
 function openPlayer(g) {
@@ -504,7 +519,8 @@ async function viewLibrary() {
       </div>
       <div class="row">
         ${libTab !== 'uploads' ? deskSlot(g, 'small') : ''}
-        ${g.playUrl ? `<button class="btn ${desk.api && winFile(g) ? '' : 'primary'} small" data-play="${g.id}">${I.web}Play in browser</button>` : ''}
+        ${g.onlineUrl ? `<button class="btn ${desk.api && winFile(g) ? '' : 'primary'} small" data-online="${g.id}">${I.online}Play online</button>` : ''}
+        ${g.playUrl ? `<button class="btn ${(desk.api && winFile(g)) || g.onlineUrl ? '' : 'primary'} small" data-play="${g.id}">${I.web}Play in browser</button>` : ''}
         ${best && !(desk.api && winFile(g) && libTab !== 'uploads') ? `<a class="btn small" href="/api/download/${best.id}">${I.download}${PLAT_NAME[best.platform]}</a>` : ''}
         ${libTab === 'uploads' ? `<a class="btn small ${g.published ? '' : 'primary'}" href="/edit/${g.id}" data-link>${g.published ? 'Edit page' : 'Finish setup'}</a>` : `<button class="btn small ghost" data-rm="${g.id}">Remove</button>`}
       </div>
@@ -526,6 +542,7 @@ async function viewLibrary() {
       }[libTab]}</div>`}</div>`;
     $$('[data-tab]').forEach((b) => b.onclick = () => { libTab = b.dataset.tab; draw(); });
     $$('[data-play]').forEach((b) => b.onclick = () => openPlayer(list.find((g) => g.id == b.dataset.play)));
+    $$('[data-online]').forEach((b) => b.onclick = () => openOnline(list.find((g) => g.id == b.dataset.online)));
     $$('[data-rm]').forEach((b) => b.onclick = async () => { await api('/api/library/' + b.dataset.rm, { method: 'DELETE' }); viewLibrary(); });
     deskRefresh();
   };
@@ -691,7 +708,7 @@ async function viewEditor(id) {
             <div class="shots" id="shots"></div></div>
           <label class="field" style="margin:0"><span>Trailer <em class="hint">optional YouTube or Vimeo link</em></span><input class="input" name="trailerUrl" value="${esc(g?.trailerUrl)}" placeholder="https://www.youtube.com/watch?v=..."></label>`)}
 
-        ${sec(4, 'Builds', 'Upload a browser build, a Windows build, or both.', `
+        ${sec(4, 'Builds', 'Upload a browser build or a Windows build, or link an online game you host yourself.', `
           <h4 class="sub">${I.web.replace('<svg', '<svg style="width:17px;vertical-align:-3px;margin-right:6px"')}Play in browser <span class="hint" style="font-weight:400">(recommended, works on any computer)</span></h4>
           <label class="drop" data-drop><input type="file" name="web" accept=".zip,.html,.htm"><b>Drop your web build .zip</b><span class="hint">A zip with an index.html inside (HTML5, Unity WebGL, Godot Web, GameMaker HTML5, PICO-8, Phaser...) or a single .html file</span><div class="picked"></div></label>
           ${g?.playUrl ? `<div class="hint" style="margin-top:8px">${I.check.replace('<svg', '<svg style="width:14px;vertical-align:-2px"')} Browser build is live. Upload a new zip to replace it, or <label style="color:var(--danger);cursor:pointer"><input type="checkbox" name="removeWeb" style="vertical-align:-2px"> remove it</label>.</div>` : ''}
@@ -699,6 +716,9 @@ async function viewEditor(id) {
             <label class="field"><span>Game width (px)</span><input class="input" name="webWidth" type="number" min="200" max="3840" value="${g?.webWidth || 960}"></label>
             <label class="field"><span>Game height (px)</span><input class="input" name="webHeight" type="number" min="200" max="2160" value="${g?.webHeight || 600}"></label>
           </div>
+          <h4 class="sub">${I.online.replace('<svg', '<svg style="width:17px;vertical-align:-3px;margin-right:6px"')}Online game <span class="hint" style="font-weight:400">(for multiplayer games with their own server)</span></h4>
+          <label class="field"><span>Game address <em class="hint">optional, must start with https://</em></span><input class="input" name="onlineUrl" maxlength="300" value="${esc(g?.onlineUrl)}" placeholder="https://mygame.com"></label>
+          <div class="hint" style="margin:-6px 0 16px">If your game runs on your own website (it has its own server, accounts or live chat), put its address here instead of uploading files. Play opens your site in its own window.</div>
           <h4 class="sub">Windows build</h4>
           <div class="two">
             <label class="field"><span>Version <em class="hint">for new uploads</em></span><input class="input" name="buildVersion" maxlength="40" placeholder="${esc(nextVersion(g))}"></label>
@@ -749,6 +769,7 @@ async function viewEditor(id) {
           <ul style="padding-left:18px;margin:0">
             <li><b>Screenshots</b> sell your game. Show real gameplay, not menus.</li>
             <li><b>Browser builds</b> run on any computer with no install.</li>
+            <li><b>Multiplayer game with its own server?</b> Add it as an online game with its web address.</li>
             <li><b>Zip your whole build folder</b> for each platform. Build 64-bit for Windows, and universal for Mac.</li>
             <li><b>Godot 4 web:</b> turn off "Thread Support". <b>Unity WebGL:</b> Brotli or Gzip both work.</li>
           </ul>
@@ -766,7 +787,7 @@ async function viewEditor(id) {
     const tags = v('tags').split(',').map((t) => t.trim()).filter(Boolean);
     const { web, downloads } = pickedFiles();
     const existingFiles = (g?.files || []).filter((f) => $(`[data-rmfile="${f.id}"]`));
-    const hasWeb = (!!g?.playUrl && !form.removeWeb?.checked) || !!web;
+    const hasWeb = (!!g?.playUrl && !form.removeWeb?.checked) || !!web || /^https:\/\/\S+$/i.test(v('onlineUrl'));
     const hasDownloads = existingFiles.length > 0 || downloads.length > 0;
     const upcoming = v('status') === 'upcoming';
     const items = [
@@ -882,7 +903,7 @@ async function viewEditor(id) {
       contentWarnings: form.contentWarnings.value, website: form.website.value.trim(), discord: form.discord.value.trim(),
       controls: $$('[name=controls]:checked', form).map((x) => x.value),
       sysreq: Object.fromEntries(['os', 'cpu', 'ram', 'gpu', 'storage', 'notes'].map((k) => [k, form['req_' + k].value])),
-      webWidth: form.webWidth.value, webHeight: form.webHeight.value,
+      webWidth: form.webWidth.value, webHeight: form.webHeight.value, onlineUrl: form.onlineUrl.value.trim(),
       removeWeb: !!form.removeWeb?.checked, removeBanner: !!form.removeBanner?.checked,
       screenshots: shots.filter((s) => s.key).map((s) => s.key),
     };
@@ -1214,7 +1235,7 @@ async function viewLanding(focus) {
       ['Is it really free?', 'Yes. GlitchBox is free for players and free for developers to publish on.'],
       ['Why do I need the app?', 'The app installs, updates and launches your games, tracks playtime and keeps your library in one place. The website is just here to tell you about it.'],
       ['Do I need a password?', 'No. You sign in with your email and a 6-digit code, and the app keeps you signed in.'],
-      ['Can I play on Mac, Linux or my phone?', 'Not yet. For now GlitchBox is a Windows app with browser games and Windows games.'],
+      ['Can I play on Mac, Linux or my phone?', 'Not yet. For now GlitchBox is a Windows app with browser games, online games and Windows games.'],
       ['Windows says it protected my PC?', 'Early versions of new apps can show this message. Click "More info" and then "Run anyway".'],
     ].map(([q, a]) => `<details class="panel"><summary>${q}</summary><p class="hint">${a}</p></details>`).join('')}</div>
     <section class="land-hero small"><div class="land-copy"><h2>Ready to play?</h2><div class="row">${dlButton(d)}</div></div></section>`;
@@ -1228,7 +1249,7 @@ async function viewDevInfo() {
   const steps = [
     ['Get the app and sign in', 'Download GlitchBox for Windows and sign in with your email. No passwords.'],
     ['Create your store page', 'Add a title, description, cover, screenshots, tags, controls and age rating. A checklist shows what is missing before you can publish.'],
-    ['Upload your build', 'Upload a browser game (.zip with index.html) or a Windows game (.zip, .exe or .msi). Big files are fine.'],
+    ['Upload your build', 'Upload a browser game (.zip with index.html) or a Windows game (.zip, .exe or .msi), or link an online game you host. Big files are fine.'],
     ['Publish and update', 'Players install with one click. Upload a new version with patch notes and every player gets it automatically.'],
   ];
   app.innerHTML = `
@@ -1243,7 +1264,7 @@ async function viewDevInfo() {
     <h2 class="land-h">How it works</h2>
     <div class="land-grid steps">${steps.map(([t, x], i) => `<div class="panel"><div class="step-n">${i + 1}</div><h3>${t}</h3><div class="hint">${x}</div></div>`).join('')}</div>
     <h2 class="land-h">What you can upload</h2>
-    <div class="panel"><div class="formats">${[['Browser game', '.zip with index.html, or a single .html'], ['Windows game', '.zip of your game folder (best), or an .exe or .msi installer']]
+    <div class="panel"><div class="formats">${[['Browser game', '.zip with index.html, or a single .html'], ['Online game', 'a link to a multiplayer game you host on your own website'], ['Windows game', '.zip of your game folder (best), or an .exe or .msi installer']]
       .map(([p, f]) => `<div><b>${p}</b><span class="hint">${f}</span></div>`).join('')}</div>
       <p class="hint" style="margin:14px 0 0">Windows games installed through the app update themselves when you upload a new version.</p></div>`;
 }

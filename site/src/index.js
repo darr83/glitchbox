@@ -18,7 +18,7 @@ const STATUSES = ['released', 'upcoming', 'alpha', 'beta'];
 const TESTING = ['alpha', 'beta'];
 const isTesting = (g) => TESTING.includes(g.status);
 const GENRES = ['Action', 'Adventure', 'Arcade', 'Casual', 'Horror', 'Platformer', 'Puzzle', 'Racing', 'RPG', 'Shooter', 'Simulation', 'Sports', 'Strategy', 'Survival', 'Visual Novel', 'Other'];
-// For now GlitchBox does browser games and Windows games only.
+// For now GlitchBox does browser games, online games (hosted on the developer's own site) and Windows games.
 const PLATFORMS = ['windows'];
 const DOWNLOAD_EXT = ['.zip', '.exe', '.msi']; // what the Windows app can install
 const IMAGE_EXT = ['.png', '.jpg', '.jpeg', '.webp', '.gif'];
@@ -42,7 +42,7 @@ function storeChecklist(g, files) {
   const shots = parseJson(g.screenshots, []);
   const req = parseJson(g.sysreq, {});
   const tags = (g.tags || '').split(',').filter(Boolean);
-  const hasBuild = !!g.web_entry || files.length > 0;
+  const hasBuild = !!g.web_entry || !!g.online_url || files.length > 0;
   const hasDownloads = files.length > 0;
   const upcoming = g.status === 'upcoming';
   const items = [
@@ -55,7 +55,7 @@ function storeChecklist(g, files) {
     ['controls', 'Supported controls', !!g.controls, true],
     ['languages', 'Languages', !!g.languages, true],
     ['rating', 'Age rating', !!RATINGS[g.content_rating], true],
-    upcoming ? ['release', 'Planned release date', !!g.release_date, true] : ['build', 'A playable build (browser or download)', hasBuild, true],
+    upcoming ? ['release', 'Planned release date', !!g.release_date, true] : ['build', 'A playable build (browser, online or download)', hasBuild, true],
   ];
   if (hasDownloads) items.push(['sysreq', 'Minimum system requirements (OS and memory)', !!(req.os && req.ram), true]);
   items.push(['banner', 'Wide banner image (recommended)', !!g.banner, false]);
@@ -336,8 +336,9 @@ async function gamesOut(c, rows) {
       tags: g.tags ? g.tags.split(',').filter(Boolean) : [], isAi: !!g.is_ai, status: g.status,
       cover: g.cover ? `/media/${g.cover}` : null,
       playUrl: g.web_entry ? `/play/${g.id}/${g.web_entry}` : null,
+      onlineUrl: g.online_url || null,
       webWidth: g.web_width, webHeight: g.web_height,
-      platforms: [...new Set([...(g.web_entry ? ['web'] : []), ...gf.map((f) => f.platform)])],
+      platforms: [...new Set([...(g.web_entry ? ['web'] : []), ...(g.online_url ? ['online'] : []), ...gf.map((f) => f.platform)])],
       files: gf, developer: devName[g.developer_id] || 'unknown', developerId: g.developer_id,
       downloads: g.downloads, plays: g.plays, inLibrary: inLib.has(g.id), libraryCount: libCount[g.id] || 0,
       createdAt: g.created_at, updatedAt: g.updated_at,
@@ -357,7 +358,7 @@ route('GET', '/api/games', async (c) => {
   if (st === 'testing') where.push("g.status IN ('alpha', 'beta')");
   else if (STATUSES.includes(st)) { where.push('g.status = ?'); args.push(st); }
   else where.push("g.status NOT IN ('alpha', 'beta')"); // the main store leaves out test builds
-  if (q.get('web') === '1') where.push('g.web_entry IS NOT NULL');
+  if (q.get('web') === '1') where.push("(g.web_entry IS NOT NULL OR g.online_url != '')"); // anything you can play without installing
   where.push('g.published = 1');
   const order = { new: 'g.created_at DESC', popular: '(g.downloads + g.plays) DESC, g.created_at DESC', updated: 'g.updated_at DESC', az: 'g.title COLLATE NOCASE' }[q.get('sort')] || 'g.created_at DESC';
   const { results } = await c.env.DB.prepare(`SELECT g.* FROM games g JOIN users u ON u.id = g.developer_id ${where.length ? 'WHERE ' + where.join(' AND ') : ''} ORDER BY ${order} LIMIT 200`).bind(...args).all();
@@ -404,6 +405,7 @@ function readGameFields(b, existing = {}) {
     release_date: pick('releaseDate', 40, '', 'release_date'),
     website: cleanUrl(b.website, existing.website),
     discord: cleanUrl(b.discord, existing.discord),
+    online_url: onlineUrl(b.onlineUrl, existing.online_url),
   };
 }
 function cleanUrl(v, d = '') {
@@ -413,10 +415,24 @@ function cleanUrl(v, d = '') {
   if (!/^https?:\/\/[^\s]+$/i.test(u)) fail(400, 'Links must start with http:// or https://');
   return u;
 }
+// Online games must be on a public https address (not GlitchBox itself, and not a local or private network).
+function onlineUrl(v, d = '') {
+  if (v === undefined) return d || '';
+  const s = tidy(v, 300);
+  if (!s) return '';
+  let u; try { u = new URL(s); } catch { fail(400, 'The online game address does not look right'); }
+  if (u.protocol !== 'https:') fail(400, 'The online game address must start with https://');
+  if (u.username || u.password) fail(400, 'The online game address cannot contain a username or password');
+  const host = u.hostname.toLowerCase();
+  if (host === 'localhost' || host.endsWith('.local') || host.endsWith('.internal') || /^[\d.]+$/.test(host) || host.includes(':')) {
+    fail(400, 'Use the public web address of your game (not localhost or an IP address)');
+  }
+  return u.href;
+}
 function checkTrailer(f) {
   if (f.trailer_url && !trailerEmbed(f.trailer_url)) fail(400, 'The trailer must be a YouTube or Vimeo link');
 }
-const GAME_COLS = ['title', 'tagline', 'description', 'genre', 'tags', 'is_ai', 'status', 'web_width', 'web_height', 'trailer_url', 'sysreq', 'controls', 'languages', 'content_rating', 'content_warnings', 'release_date', 'website', 'discord'];
+const GAME_COLS = ['title', 'tagline', 'description', 'genre', 'tags', 'is_ai', 'status', 'web_width', 'web_height', 'trailer_url', 'sysreq', 'controls', 'languages', 'content_rating', 'content_warnings', 'release_date', 'website', 'discord', 'online_url'];
 async function gameFiles(env, id) {
   return (await env.DB.prepare('SELECT platform FROM game_files WHERE game_id = ?').bind(id).all()).results;
 }
