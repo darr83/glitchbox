@@ -42,7 +42,7 @@ Locally, login codes show on screen (`DEV_MODE=1` in `.dev.vars`), so you do not
 2. **Create the database**: `npx wrangler d1 create glitchbox`. Copy the `database_id` it prints into `wrangler.jsonc` (replace `REPLACE_WITH_YOUR_D1_ID`).
 3. **Create the file storage**: `npx wrangler r2 bucket create glitchbox-files`. (R2 needs to be switched on once in the Cloudflare dashboard; it asks for a card but the free tier costs nothing.)
 4. **Set up the database tables**: `npm run db:migrate:remote`
-5. **Email**: sign up at resend.com, add and verify your domain, create an API key, then run `npx wrangler secret put RESEND_API_KEY` and paste it. Change `MAIL_FROM` in `wrangler.jsonc` to an address on that domain, e.g. `GlitchBox <login@yourdomain.com>`.
+5. **Email**: sign up at resend.com, add and verify your domain, create an API key, then run `npx wrangler secret put RESEND_API_KEY` and paste it. `MAIL_FROM` in `wrangler.jsonc` is set to `GlitchBox <login@blueprintgames.online>`; change it if you send from another domain.
 6. **Deploy**: `npm run deploy`. You get a `*.workers.dev` address straight away.
 7. **Your own domain** (optional): in the Cloudflare dashboard, Workers & Pages → glitchbox → Settings → Domains & Routes → Add custom domain.
 8. **Demo games** (optional): `npm run seed -- --remote`.

@@ -26,7 +26,7 @@
   "triggers": { "crons": ["0 4 * * *"] },
   "vars": {
     "SITE_NAME": "GlitchBox",
-    "MAIL_FROM": "GlitchBox <login@yourdomain.com>",
+    "MAIL_FROM": "GlitchBox <login@blueprintgames.online>",
     "MAX_FILE_MB": "5000"
   },
   "observability": { "enabled": true }
