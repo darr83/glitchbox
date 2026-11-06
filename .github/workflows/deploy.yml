@@ -6,7 +6,7 @@
 # 3. Builds the Windows installer for that address and publishes it to /download.
 #
 # Needs repository secrets CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID.
-# Optional: secret RESEND_API_KEY and variable MAIL_FROM (defaults to "GlitchBox <login@blueprintgames.online>")
+# Optional: secret RESEND_API_KEY and variable MAIL_FROM (defaults to "GlitchBox <noreply@blueprintgames.online>")
 # for login emails, and variable GLITCHBOX_URL once you have your own domain.
 name: Deploy GlitchBox
 
@@ -56,7 +56,7 @@ jobs:
         id: deploy
         run: |
           # Login emails come from blueprintgames.online (verified in Resend). Set the MAIL_FROM variable to override.
-          FROM="${{ vars.MAIL_FROM }}"; [ -n "$FROM" ] || FROM="GlitchBox <login@blueprintgames.online>"
+          FROM="${{ vars.MAIL_FROM }}"; [ -n "$FROM" ] || FROM="GlitchBox <noreply@blueprintgames.online>"
           npx wrangler deploy ${FROM:+--var "MAIL_FROM:$FROM"} | tee deploy.log
           URL="${{ vars.GLITCHBOX_URL }}"
           [ -n "$URL" ] || URL=$(grep -oE 'https://[a-zA-Z0-9.-]+\.workers\.dev' deploy.log | head -1)
